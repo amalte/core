@@ -165,7 +165,7 @@ class BrData:
 
         return result[DATA]
 
-    async def async_update(self, *_):
+    async def async_update(self, *args):
         """Update the data from buienradar and schedule the next update."""
         data = await self._async_update()
 

@@ -1,7 +1,5 @@
 """The buienradar integration."""
 
-from __future__ import annotations
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -24,7 +22,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         entry_data = hass.data[DOMAIN].pop(entry.entry_id)
         for platform in PLATFORMS:
-            if (data := entry_data.get(platform)) and (
+            if (data := entry_data.get(platform)) is not None and (
                 unsub := data.unsub_schedule_update
             ):
                 unsub()

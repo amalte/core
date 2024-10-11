@@ -1,6 +1,5 @@
 """Config flow for buienradar integration."""
 
-from __future__ import annotations
 
 import copy
 from typing import Any, cast
@@ -60,7 +59,7 @@ OPTIONS_SCHEMA = vol.Schema(
 
 async def _options_suggested_values(handler: SchemaCommonFlowHandler) -> dict[str, Any]:
     parent_handler = cast(SchemaOptionsFlowHandler, handler.parent_handler)
-    suggested_values = copy.deepcopy(dict(parent_handler.config_entry.data))
+    suggested_values = copy.deepcopy(parent_handler.config_entry.data)
     suggested_values.update(parent_handler.options)
     return suggested_values
 
@@ -89,9 +88,22 @@ class BuienradarFlowHandler(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle a flow initialized by the user."""
+        data_schema = vol.Schema(
+        {
+            vol.Required(CONF_LATITUDE, default=self.hass.config.latitude): cv.latitude,
+            vol.Required(CONF_LONGITUDE, default=self.hass.config.longitude): cv.longitude,
+        }
+    )
         if user_input is not None:
             lat = user_input.get(CONF_LATITUDE)
             lon = user_input.get(CONF_LONGITUDE)
+
+            if lat is None or lon is None:
+                return self.async_show_form(
+                    step_id="user",
+                    data_schema=data_schema,
+                    errors={"base": "missing_coordinates"},
+        )
 
             await self.async_set_unique_id(f"{lat}-{lon}")
             self._abort_if_unique_id_configured()

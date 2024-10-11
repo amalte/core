@@ -1,7 +1,5 @@
 """Provide animated GIF loops of Buienradar imagery."""
 
-from __future__ import annotations
-
 import asyncio
 from datetime import datetime, timedelta
 import logging
@@ -94,13 +92,13 @@ class BuienradarCam(Camera):
 
         self._attr_unique_id = f"{latitude:2.6f}{longitude:2.6f}"
 
-    def __needs_refresh(self) -> bool:
+    def _needs_refresh(self) -> bool:
         if not (self._delta and self._deadline and self._last_image):
             return True
 
         return dt_util.utcnow() > self._deadline
 
-    async def __retrieve_radar_image(self) -> bool:
+    async def _retrieve_radar_image(self) -> bool:
         """Retrieve new radar image and return whether this succeeded."""
         session = async_get_clientsession(self.hass)
 
@@ -155,7 +153,7 @@ class BuienradarCam(Camera):
             again before continuing.
           * :func:`asyncio.Condition.notify_all` requires the lock to be held.
         """
-        if not self.__needs_refresh():
+        if not self._needs_refresh():
             return self._last_image
 
         # get lock, check iff loading, await notification if loading
@@ -171,7 +169,7 @@ class BuienradarCam(Camera):
 
         try:
             now = dt_util.utcnow()
-            was_updated = await self.__retrieve_radar_image()
+            was_updated = await self._retrieve_radar_image()
             # was updated? Set new deadline relative to now before loading
             if was_updated:
                 self._deadline = now + timedelta(seconds=self._delta)
