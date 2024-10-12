@@ -88,27 +88,6 @@ class BuienradarFlowHandler(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle a flow initialized by the user."""
-        data_schema = vol.Schema(
-        {
-            vol.Required(CONF_LATITUDE, default=self.hass.config.latitude): cv.latitude,
-            vol.Required(CONF_LONGITUDE, default=self.hass.config.longitude): cv.longitude,
-        }
-    )
-        if user_input is not None:
-            lat = user_input.get(CONF_LATITUDE)
-            lon = user_input.get(CONF_LONGITUDE)
-
-            if lat is None or lon is None:
-                return self.async_show_form(
-                    step_id="user",
-                    data_schema=data_schema,
-                    errors={"base": "missing_coordinates"},
-        )
-
-            await self.async_set_unique_id(f"{lat}-{lon}")
-            self._abort_if_unique_id_configured()
-
-            return self.async_create_entry(title=f"{lat},{lon}", data=user_input)
 
         data_schema = vol.Schema(
             {
@@ -121,8 +100,24 @@ class BuienradarFlowHandler(ConfigFlow, domain=DOMAIN):
             }
         )
 
+        if user_input:
+            lat = user_input.get(CONF_LATITUDE)
+            lon = user_input.get(CONF_LONGITUDE)
+
+            if not lat:
+                return self._show_form_with_error(data_schema, "missing_latitude")
+            if not lon:
+                return self._show_form_with_error(data_schema, "missing_longitude")
+
+            await self.async_set_unique_id(f"{lat}-{lon}")
+            self._abort_if_unique_id_configured()
+
+            return self.async_create_entry(title=f"{lat},{lon}", data=user_input)
+
+        return self.async_show_form(step_id="user", data_schema=data_schema, errors={})
+
+    def _show_form_with_error(self, data_schema, error_key: str) -> ConfigFlowResult:
+        """Show form with an error."""
         return self.async_show_form(
-            step_id="user",
-            data_schema=data_schema,
-            errors={},
+            step_id="user", data_schema=data_schema, errors={"base": error_key}
         )
