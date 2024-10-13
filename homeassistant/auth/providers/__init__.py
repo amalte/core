@@ -170,10 +170,11 @@ async def load_auth_provider_module(
     if hass.config.skip_pip or not hasattr(module, "REQUIREMENTS"):
         return module
 
-    if (processed := hass.data.get(DATA_REQS)) is None:
-        processed = hass.data[DATA_REQS] = set()
-    elif provider in processed:
-        return module
+    processed = hass.data.get(DATA_REQS, set())
+    
+    if provider in processed:
+        _LOGGER.info("Auth provider %s already loaded. Returning existing module.", provider)
+        return {"module": module, "status": "already_loaded"}
 
     reqs = module.REQUIREMENTS
     await requirements.async_process_requirements(
@@ -181,7 +182,9 @@ async def load_auth_provider_module(
     )
 
     processed.add(provider)
-    return module
+    hass.data[DATA_REQS] = processed
+    
+    return {"module": module, "status": "loaded"}
 
 
 class LoginFlow(data_entry_flow.FlowHandler[AuthFlowResult, tuple[str, str]]):
