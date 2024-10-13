@@ -1,6 +1,7 @@
 """Alexa Resources and Assets."""
 
 from typing import Any
+TYPE_KEY = "@type"
 
 
 class AlexaGlobalCatalog:
@@ -237,7 +238,7 @@ class AlexaCapabilityResource:
         Returns resource label objects for friendlyNames serialized.
         """
 
-        TYPE_KEY = "@type"
+        
         
         labels: list[dict[str, Any]] = []
         label_dict: dict[str, Any]
@@ -370,7 +371,7 @@ class AlexaSemantics:
 
     https://developer.amazon.com/docs/device-apis/alexa-discovery.html#semantics-object
     """
-    TYPE_KEY = "@type"
+
     MAPPINGS_ACTION = "actionMappings"
     MAPPINGS_STATE = "stateMappings"
 
@@ -392,7 +393,7 @@ class AlexaSemantics:
     DIRECTIVE_TOGGLE_TURN_OFF = "TurnOff"
     DIRECTIVE_MODE_SET_MODE = "SetMode"
     DIRECTIVE_MODE_ADJUST_MODE = "AdjustMode"
-    TYPE_KEY = "@type"
+
     
     
 
@@ -411,7 +412,7 @@ class AlexaSemantics:
 
     def add_states_to_value(self, states: list[str], value: Any) -> None:
         """Add StatesToValue stateMappings."""
-        TYPE_KEY = "@type"
+       
         
         self._add_state_mapping(
             {TYPE_KEY : self.STATES_TO_VALUE, "states": states, "value": value}
@@ -425,7 +426,7 @@ class AlexaSemantics:
         """Add StatesToRange stateMappings."""
 
 
-        TYPE_KEY = "@type"
+        
         self._add_state_mapping(
             {
                 TYPE_KEY : self.STATES_TO_RANGE,
@@ -439,7 +440,7 @@ class AlexaSemantics:
     ) -> None:
         """Add ActionsToDirective actionMappings."""
 
-        TYPE_KEY = "@type"
+        
         self._add_action_mapping(
             {
                 TYPE_KEY : self.ACTIONS_TO_DIRECTIVE,
