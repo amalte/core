@@ -13,6 +13,7 @@ from homeassistant.components import media_source, stt, tts
 from homeassistant.components.assist_pipeline import (
     OPTION_PREFERRED,
     AudioSettings,
+    PipelineConfigForAudioStream,
     PipelineEvent,
     PipelineEventType,
     PipelineStage,
@@ -252,28 +253,30 @@ class AssistSatelliteEntity(entity.Entity):
         self._pipeline_task = self.platform.config_entry.async_create_background_task(
             self.hass,
             async_pipeline_from_audio_stream(
-                self.hass,
-                context=self._context,
-                event_callback=self._internal_on_pipeline_event,
-                stt_metadata=stt.SpeechMetadata(
-                    language="",  # set in async_pipeline_from_audio_stream
-                    format=stt.AudioFormats.WAV,
-                    codec=stt.AudioCodecs.PCM,
-                    bit_rate=stt.AudioBitRates.BITRATE_16,
-                    sample_rate=stt.AudioSampleRates.SAMPLERATE_16000,
-                    channel=stt.AudioChannels.CHANNEL_MONO,
+                hass=self.hass,
+                config=PipelineConfigForAudioStream(
+                    context=self._context,
+                    event_callback=self._internal_on_pipeline_event,
+                    stt_metadata=stt.SpeechMetadata(
+                        language="",  # set in async_pipeline_from_audio_stream
+                        format=stt.AudioFormats.WAV,
+                        codec=stt.AudioCodecs.PCM,
+                        bit_rate=stt.AudioBitRates.BITRATE_16,
+                        sample_rate=stt.AudioSampleRates.SAMPLERATE_16000,
+                        channel=stt.AudioChannels.CHANNEL_MONO,
+                    ),
+                    stt_stream=audio_stream,
+                    pipeline_id=self._resolve_pipeline(),
+                    conversation_id=self._conversation_id,
+                    device_id=device_id,
+                    tts_audio_output=self.tts_options,
+                    wake_word_phrase=wake_word_phrase,
+                    audio_settings=AudioSettings(
+                        silence_seconds=self._resolve_vad_sensitivity()
+                    ),
+                    start_stage=start_stage,
+                    end_stage=end_stage,
                 ),
-                stt_stream=audio_stream,
-                pipeline_id=self._resolve_pipeline(),
-                conversation_id=self._conversation_id,
-                device_id=device_id,
-                tts_audio_output=self.tts_options,
-                wake_word_phrase=wake_word_phrase,
-                audio_settings=AudioSettings(
-                    silence_seconds=self._resolve_vad_sensitivity()
-                ),
-                start_stage=start_stage,
-                end_stage=end_stage,
             ),
             f"{self.entity_id}_pipeline",
         )
