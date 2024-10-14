@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import voluptuous as vol
@@ -93,6 +94,8 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
+_LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Activate the Alexa component."""
@@ -101,7 +104,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     config = config[DOMAIN]
 
-    intent.async_setup(hass)
+    try:
+        intent.async_setup(hass)
+    except (OSError, ValueError) as e:
+        _LOGGER.error(e)
+        return False
 
     if flash_briefings_config := config.get(CONF_FLASH_BRIEFINGS):
         flash_briefings.async_setup(hass, flash_briefings_config)

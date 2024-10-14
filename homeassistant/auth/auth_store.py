@@ -6,7 +6,7 @@ from datetime import timedelta
 import hmac
 import itertools
 from logging import getLogger
-from typing import Any
+from typing import Any, Optional
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr, entity_registry as er
@@ -56,9 +56,9 @@ class AuthStore:
         """Initialize the auth store."""
         self.hass = hass
         self._loaded = False
-        self._users: dict[str, models.User] = None  # type: ignore[assignment]
-        self._groups: dict[str, models.Group] = None  # type: ignore[assignment]
-        self._perm_lookup: PermissionLookup = None  # type: ignore[assignment]
+        self._users: Optional[dict[str, models.User]] = None  # type: ignore[assignment]
+        self._groups: Optional[dict[str, models.Group]] = None  # type: ignore[assignment]
+        self._perm_lookup: Optional[PermissionLookup] = None  # type: ignore[assignment]
         self._store = Store[dict[str, list[dict[str, Any]]]](
             hass, STORAGE_VERSION, STORAGE_KEY, private=True, atomic_writes=True
         )
@@ -310,24 +310,37 @@ class AuthStore:
 
     async def async_load(self) -> None:  # noqa: C901
         """Load the users."""
-        if self._loaded:
-            raise RuntimeError("Auth storage is already loaded")
-        self._loaded = True
+        self._check_if_loaded()
 
         dev_reg = dr.async_get(self.hass)
         ent_reg = er.async_get(self.hass)
         data = await self._store.async_load()
+        self._perm_lookup = PermissionLookup(ent_reg, dev_reg)
 
-        perm_lookup = PermissionLookup(ent_reg, dev_reg)
-        self._perm_lookup = perm_lookup
-
-        if data is None or not isinstance(data, dict):
+        if not self._validate_data(data):
             self._set_defaults()
             return
 
+        users, groups = self._parse_data(data)
+        
+    def _check_if_loaded(self):
+        if self._loaded:
+            raise RuntimeError("Auth storage is already loaded")
+        self._loaded = True
+
+    def _validate_data(self, data: Any) -> bool:
+        return data is not None and isinstance(data, dict)
+
+    def _parse_data(self, data: dict) -> tuple[dict[str, models.User], dict[str, models.Group]]:
         users: dict[str, models.User] = {}
         groups: dict[str, models.Group] = {}
-        credentials: dict[str, models.Credentials] = {}
+    
+        for user_id, user_data in data.get("users", {}).items():
+            users[user_id] = models.User(**user_data)
+        for group_id, group_data in data.get("groups", {}).items():
+            groups[group_id] = models.Group(**group_data)
+    
+        return users, groups
 
         # Soft-migrating data as we load. We are going to make sure we have a
         # read only group and an admin group. There are two states that we can
