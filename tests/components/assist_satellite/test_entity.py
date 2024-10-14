@@ -48,9 +48,10 @@ async def test_entity_state(
 
     assert mock_start_pipeline.called
     kwargs = mock_start_pipeline.call_args[1]
-    assert kwargs["context"] is context
-    assert kwargs["event_callback"] == entity._internal_on_pipeline_event
-    assert kwargs["stt_metadata"] == stt.SpeechMetadata(
+    assert kwargs["config"] is not None
+    assert kwargs["config"].context is context
+    assert kwargs["config"].event_callback == entity._internal_on_pipeline_event
+    assert kwargs["config"].stt_metadata == stt.SpeechMetadata(
         language="",
         format=stt.AudioFormats.WAV,
         codec=stt.AudioCodecs.PCM,
@@ -58,16 +59,16 @@ async def test_entity_state(
         sample_rate=stt.AudioSampleRates.SAMPLERATE_16000,
         channel=stt.AudioChannels.CHANNEL_MONO,
     )
-    assert kwargs["stt_stream"] is audio_stream
-    assert kwargs["pipeline_id"] is None
-    assert kwargs["device_id"] is None
-    assert kwargs["tts_audio_output"] is None
-    assert kwargs["wake_word_phrase"] is None
-    assert kwargs["audio_settings"] == AudioSettings(
+    assert kwargs["config"].stt_stream is audio_stream
+    assert kwargs["config"].pipeline_id is None
+    assert kwargs["config"].device_id is None
+    assert kwargs["config"].tts_audio_output is None
+    assert kwargs["config"].wake_word_phrase is None
+    assert kwargs["config"].audio_settings == AudioSettings(
         silence_seconds=vad.VadSensitivity.to_seconds(vad.VadSensitivity.DEFAULT)
     )
-    assert kwargs["start_stage"] == PipelineStage.STT
-    assert kwargs["end_stage"] == PipelineStage.TTS
+    assert kwargs["config"].start_stage == PipelineStage.STT
+    assert kwargs["config"].end_stage == PipelineStage.TTS
 
     for event_type, event_data, expected_state in (
         (PipelineEventType.RUN_START, {}, AssistSatelliteState.LISTENING_WAKE_WORD),
@@ -96,7 +97,7 @@ async def test_entity_state(
         (PipelineEventType.TTS_END, {}, AssistSatelliteState.RESPONDING),
         (PipelineEventType.ERROR, {}, AssistSatelliteState.RESPONDING),
     ):
-        kwargs["event_callback"](PipelineEvent(event_type, event_data))
+        kwargs["config"].event_callback(PipelineEvent(event_type, event_data))
         state = hass.states.get(ENTITY_ID)
         assert state.state == expected_state, event_type
 
@@ -356,8 +357,9 @@ async def test_pipeline_entity(
 
     done = asyncio.Event()
 
-    async def async_pipeline_from_audio_stream(*args, pipeline_id: str, **kwargs):
-        assert pipeline_id == pipeline.id
+    async def async_pipeline_from_audio_stream(*args, **kwargs):
+        assert kwargs["config"] is not None
+        assert kwargs["config"].pipeline_id is pipeline.id
         done.set()
 
     with (
@@ -387,9 +389,10 @@ async def test_pipeline_entity_preferred(
 
     done = asyncio.Event()
 
-    async def async_pipeline_from_audio_stream(*args, pipeline_id: str, **kwargs):
+    async def async_pipeline_from_audio_stream(*args, **kwargs):
         # Preferred pipeline
-        assert pipeline_id is None
+        assert kwargs["config"] is not None
+        assert kwargs["config"].pipeline_id is None
         done.set()
 
     with (
@@ -415,11 +418,12 @@ async def test_vad_sensitivity_entity(
 
     done = asyncio.Event()
 
-    async def async_pipeline_from_audio_stream(
-        *args, audio_settings: AudioSettings, **kwargs
-    ):
+    async def async_pipeline_from_audio_stream(*args, **kwargs):
         # Verify vad sensitivity
-        assert audio_settings.silence_seconds == vad.VadSensitivity.to_seconds(
+        assert kwargs["config"] is not None
+        assert kwargs[
+            "config"
+        ].audio_settings.silence_seconds is vad.VadSensitivity.to_seconds(
             vad.VadSensitivity.AGGRESSIVE
         )
         done.set()
