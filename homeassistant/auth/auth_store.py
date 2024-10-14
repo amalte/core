@@ -325,7 +325,7 @@ class AuthStore:
         
     def _check_if_loaded(self):
         if self._loaded:
-        raise RuntimeError("Auth storage is already loaded")
+            raise RuntimeError("Auth storage is already loaded")
         self._loaded = True
 
     def _validate_data(self, data: Any) -> bool:
