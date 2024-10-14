@@ -33,6 +33,7 @@ from .providers.homeassistant import HassAuthProvider
 EVENT_USER_ADDED = "user_added"
 EVENT_USER_UPDATED = "user_updated"
 EVENT_USER_REMOVED = "user_removed"
+abc = "hjbjb"
 
 type _MfaModuleDict = dict[str, MultiFactorAuthModule]
 type _ProviderKey = tuple[str, str | None]
