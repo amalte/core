@@ -1,6 +1,7 @@
 """Alexa Resources and Assets."""
 
 from typing import Any
+
 TYPE_KEY = "@type"
 
 
@@ -22,8 +23,6 @@ class AlexaGlobalCatalog:
 
     # Air Purifier, Air Cleaner,Clean Air Machine
     DEVICE_NAME_AIR_PURIFIER = "Alexa.DeviceName.AirPurifier"
-
-   
 
     # Fan, Blower
     DEVICE_NAME_FAN = "Alexa.DeviceName.Fan"
@@ -212,9 +211,6 @@ class AlexaCapabilityResource:
     https://developer.amazon.com/docs/device-apis/resources-and-assets.html#capability-resources
     """
 
-
-    
-
     def __init__(self, labels: list[str]) -> None:
         """Initialize an Alexa resource."""
         self._resource_labels = []
@@ -238,16 +234,14 @@ class AlexaCapabilityResource:
         Returns resource label objects for friendlyNames serialized.
         """
 
-        
-        
         labels: list[dict[str, Any]] = []
         label_dict: dict[str, Any]
         for label in resources:
             if label in AlexaGlobalCatalog.__dict__.values():
-                label_dict = {TYPE_KEY : "asset", "value": {"assetId": label}}
+                label_dict = {TYPE_KEY: "asset", "value": {"assetId": label}}
             else:
                 label_dict = {
-                    TYPE_KEY : "text",
+                    TYPE_KEY: "text",
                     "value": {"text": label, "locale": "en-US"},
                 }
 
@@ -394,9 +388,6 @@ class AlexaSemantics:
     DIRECTIVE_MODE_SET_MODE = "SetMode"
     DIRECTIVE_MODE_ADJUST_MODE = "AdjustMode"
 
-    
-    
-
     def __init__(self) -> None:
         """Initialize an Alexa modeResource."""
         self._action_mappings: list[dict[str, Any]] = []
@@ -412,24 +403,19 @@ class AlexaSemantics:
 
     def add_states_to_value(self, states: list[str], value: Any) -> None:
         """Add StatesToValue stateMappings."""
-       
-        
-        self._add_state_mapping(
-            {TYPE_KEY : self.STATES_TO_VALUE, "states": states, "value": value}
-        )
 
-    
+        self._add_state_mapping(
+            {TYPE_KEY: self.STATES_TO_VALUE, "states": states, "value": value}
+        )
 
     def add_states_to_range(
         self, states: list[str], min_value: float, max_value: float
     ) -> None:
         """Add StatesToRange stateMappings."""
 
-
-        
         self._add_state_mapping(
             {
-                TYPE_KEY : self.STATES_TO_RANGE,
+                TYPE_KEY: self.STATES_TO_RANGE,
                 "states": states,
                 "range": {"minimumValue": min_value, "maximumValue": max_value},
             }
@@ -440,10 +426,9 @@ class AlexaSemantics:
     ) -> None:
         """Add ActionsToDirective actionMappings."""
 
-        
         self._add_action_mapping(
             {
-                TYPE_KEY : self.ACTIONS_TO_DIRECTIVE,
+                TYPE_KEY: self.ACTIONS_TO_DIRECTIVE,
                 "actions": actions,
                 "directive": {"name": directive, "payload": payload},
             }
