@@ -173,7 +173,7 @@ class Data:
 
         if found is None:
             # check a hash to make timing the same as if user was found
-            self._handle_compromised_password()
+            bcrypt.checkpw(b"foo", dummy)
             raise InvalidAuth
 
         user_hash = base64.b64decode(found["password"])
@@ -181,10 +181,6 @@ class Data:
         # bcrypt.checkpw is timing-safe
         if not bcrypt.checkpw(password.encode(), user_hash):
             raise InvalidAuth
-        
-    def _handle_compromised_password(self):
-        """Revoke and change the password since it is compromised."""
-        _LOGGER.warning("The password has been compromised. It will be revoked and changed.")
 
     def hash_password(self, password: str, for_storage: bool = False) -> bytes:
         """Encode a password."""
