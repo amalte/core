@@ -10,6 +10,7 @@ from typing import Any, cast
 
 import bcrypt
 import voluptuous as vol
+import os
 
 from homeassistant.const import CONF_ID
 from homeassistant.core import HomeAssistant, callback
@@ -163,7 +164,12 @@ class Data:
         Raises InvalidAuth if auth invalid.
         """
         username = self.normalize_username(username)
-        dummy = b"$2b$12$CiuFGszHx9eNHxPuQcwBWez4CwDTOcLTX5CbOpV6gef2nYuXkY7BO"
+        dummy = os.getenv("DUMMY_PASSWORD", "").encode()
+
+        # Ensure the password is set securely in the environment.
+        if not dummy:
+            raise RuntimeError("Environment variable DUMMY_PASSWORD is not set!")
+        
         found = None
 
         # Compare all users to avoid timing attacks.
