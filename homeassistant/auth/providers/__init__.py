@@ -155,7 +155,7 @@ async def auth_provider_from_config(
 
 async def load_auth_provider_module(
     hass: HomeAssistant, provider: str
-) -> dict[str, Any]:
+) -> types.ModuleType:
     """Load an auth provider."""
     try:
         module = await async_import_module(
@@ -167,23 +167,28 @@ async def load_auth_provider_module(
             f"Unable to load auth provider {provider}: {err}"
         ) from err
 
-    status = "loaded"
-    
-    if hass.config.skip_pip or not hasattr(module, "REQUIREMENTS"):
-        status = "requirements_skipped"
-    else:
-        if (processed := hass.data.get(DATA_REQS)) is None:
-            processed = hass.data[DATA_REQS] = set()
-        elif provider in processed:
-            status = "already_loaded"
-        else:
-            reqs = module.REQUIREMENTS
-            await requirements.async_process_requirements(
-                hass, f"auth provider {provider}", reqs
-            )
+    await _process_requirements(hass, provider, module)
+    return module
 
-            processed.add(provider)
-    return {"module": module, "status": status}
+
+async def _process_requirements(
+    hass: HomeAssistant, provider: str, module: types.ModuleType
+) -> None:
+    """Process the requirements for the auth provider module."""
+    if hass.config.skip_pip or not hasattr(module, "REQUIREMENTS"):
+        return
+
+    if (processed := hass.data.get(DATA_REQS)) is None:
+        processed = hass.data[DATA_REQS] = set()
+    elif provider in processed:
+        return
+
+    reqs = module.REQUIREMENTS
+    await requirements.async_process_requirements(
+        hass, f"auth provider {provider}", reqs
+    )
+
+    processed.add(provider)
 
 
 class LoginFlow(data_entry_flow.FlowHandler[AuthFlowResult, tuple[str, str]]):

@@ -6,11 +6,11 @@ import asyncio
 import base64
 from collections.abc import Mapping
 import logging
+import os
 from typing import Any, cast
 
 import bcrypt
 import voluptuous as vol
-import os
 
 from homeassistant.const import CONF_ID
 from homeassistant.core import HomeAssistant, callback
@@ -164,12 +164,20 @@ class Data:
         Raises InvalidAuth if auth invalid.
         """
         username = self.normalize_username(username)
-        dummy = os.getenv("DUMMY_PASSWORD", "").encode()
 
         # Ensure the password is set securely in the environment.
-        if not dummy:
-            raise RuntimeError("Environment variable DUMMY_PASSWORD is not set!")
-        
+        dummy = os.environ.get(
+            "DUMMY_HASH",
+            b"$2b$12$CiuFGszHx9eNHxPuQcwBWez4CwDTOcLTX5CbOpV6gef2nYuXkY7BO",
+        )
+        dummy_key = os.environ.get("DUMMY_KEY", b"foo")
+
+        if isinstance(dummy, str):
+            dummy = dummy.encode()
+
+        if isinstance(dummy_key, str):
+            dummy_key = dummy_key.encode()
+
         found = None
 
         # Compare all users to avoid timing attacks.
@@ -179,7 +187,7 @@ class Data:
 
         if found is None:
             # check a hash to make timing the same as if user was found
-            bcrypt.checkpw(b"foo", dummy)
+            bcrypt.checkpw(dummy_key, dummy)
             raise InvalidAuth
 
         user_hash = base64.b64decode(found["password"])
