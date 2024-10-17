@@ -19,6 +19,7 @@ def lookup_all(lookup_dict: SubCategoryDict) -> ValueType:
     # In case of ALL category, lookup_dict IS the schema.
     return cast(ValueType, lookup_dict)
 
+
 def compile_policy(
     policy: CategoryType, subcategories: SubCatLookupType, perm_lookup: PermissionLookup
 ) -> Callable[[str, str], bool]:

@@ -10,6 +10,7 @@ from typing import Any, cast
 
 import bcrypt
 import voluptuous as vol
+import os
 
 from homeassistant.const import CONF_ID
 from homeassistant.core import HomeAssistant, callback
@@ -163,7 +164,12 @@ class Data:
         Raises InvalidAuth if auth invalid.
         """
         username = self.normalize_username(username)
-        dummy = b"$2b$12$CiuFGszHx9eNHxPuQcwBWez4CwDTOcLTX5CbOpV6gef2nYuXkY7BO"
+        dummy = os.getenv("DUMMY_PASSWORD", "").encode()
+
+        # Ensure the password is set securely in the environment.
+        if not dummy:
+            raise RuntimeError("Environment variable DUMMY_PASSWORD is not set!")
+        
         found = None
 
         # Compare all users to avoid timing attacks.
@@ -173,7 +179,7 @@ class Data:
 
         if found is None:
             # check a hash to make timing the same as if user was found
-            self._handle_compromised_password()
+            bcrypt.checkpw(b"foo", dummy)
             raise InvalidAuth
 
         user_hash = base64.b64decode(found["password"])
@@ -181,10 +187,6 @@ class Data:
         # bcrypt.checkpw is timing-safe
         if not bcrypt.checkpw(password.encode(), user_hash):
             raise InvalidAuth
-        
-    def _handle_compromised_password(self):
-        """Revoke and change the password since it is compromised."""
-        _LOGGER.warning("The password has been compromised. It will be revoked and changed.")
 
     def hash_password(self, password: str, for_storage: bool = False) -> bytes:
         """Encode a password."""
