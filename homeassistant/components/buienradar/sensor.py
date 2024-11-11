@@ -26,7 +26,6 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_ATTRIBUTION,
     CONF_LATITUDE,
@@ -47,10 +46,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
+from . import BuienRadarConfigEntry
 from .const import (
     CONF_TIMEFRAME,
     DEFAULT_TIMEFRAME,
-    DOMAIN,
     STATE_CONDITION_CODES,
     STATE_CONDITIONS,
     STATE_DETAILED_CONDITIONS,
@@ -84,19 +83,19 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
         key="barometerfc",
         translation_key="barometerfc",
-        icon= GAUGE_ICON,
+        icon=GAUGE_ICON,
     ),
     # new in json api (>1.0.0):
     SensorEntityDescription(
         key="barometerfcname",
         translation_key="barometerfcname",
-        icon= GAUGE_ICON,
+        icon=GAUGE_ICON,
     ),
     # new in json api (>1.0.0):
     SensorEntityDescription(
         key="barometerfcnamenl",
         translation_key="barometerfcnamenl",
-        icon= GAUGE_ICON,
+        icon=GAUGE_ICON,
     ),
     SensorEntityDescription(
         key="condition",
@@ -161,24 +160,24 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
         key="windforce",
         translation_key="windforce",
         native_unit_of_measurement="Bft",
-        icon= WEATHER_WINDY_ICON,
+        icon=WEATHER_WINDY_ICON,
     ),
     SensorEntityDescription(
         key="winddirection",
         translation_key="winddirection",
-        icon= COMPASS_ICON,
+        icon=COMPASS_ICON,
     ),
     SensorEntityDescription(
         key="windazimuth",
         translation_key="windazimuth",
         native_unit_of_measurement=DEGREE,
-        icon= COMPASS_ICON,
+        icon=COMPASS_ICON,
     ),
     SensorEntityDescription(
         key="pressure",
         device_class=SensorDeviceClass.PRESSURE,
         native_unit_of_measurement=UnitOfPressure.HPA,
-        icon= GAUGE_ICON,
+        icon=GAUGE_ICON,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
@@ -388,91 +387,91 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
         key="rainchance_1d",
         translation_key="rainchance_1d",
         native_unit_of_measurement=PERCENTAGE,
-        icon= WEATHER_POURING_ICON,
+        icon=WEATHER_POURING_ICON,
     ),
     SensorEntityDescription(
         key="rainchance_2d",
         translation_key="rainchance_2d",
         native_unit_of_measurement=PERCENTAGE,
-        icon= WEATHER_POURING_ICON,
+        icon=WEATHER_POURING_ICON,
     ),
     SensorEntityDescription(
         key="rainchance_3d",
         translation_key="rainchance_3d",
         native_unit_of_measurement=PERCENTAGE,
-        icon= WEATHER_POURING_ICON,
+        icon=WEATHER_POURING_ICON,
     ),
     SensorEntityDescription(
         key="rainchance_4d",
         translation_key="rainchance_4d",
         native_unit_of_measurement=PERCENTAGE,
-        icon= WEATHER_POURING_ICON,
+        icon=WEATHER_POURING_ICON,
     ),
     SensorEntityDescription(
         key="rainchance_5d",
         translation_key="rainchance_5d",
         native_unit_of_measurement=PERCENTAGE,
-        icon= WEATHER_POURING_ICON,
+        icon=WEATHER_POURING_ICON,
     ),
     SensorEntityDescription(
         key="sunchance_1d",
         translation_key="sunchance_1d",
         native_unit_of_measurement=PERCENTAGE,
-        icon= WEATHER_PARTLY_CLOUDY_ICON,
+        icon=WEATHER_PARTLY_CLOUDY_ICON,
     ),
     SensorEntityDescription(
         key="sunchance_2d",
         translation_key="sunchance_2d",
         native_unit_of_measurement=PERCENTAGE,
-        icon= WEATHER_PARTLY_CLOUDY_ICON,
+        icon=WEATHER_PARTLY_CLOUDY_ICON,
     ),
     SensorEntityDescription(
         key="sunchance_3d",
         translation_key="sunchance_3d",
         native_unit_of_measurement=PERCENTAGE,
-        icon= WEATHER_PARTLY_CLOUDY_ICON,
+        icon=WEATHER_PARTLY_CLOUDY_ICON,
     ),
     SensorEntityDescription(
         key="sunchance_4d",
         translation_key="sunchance_4d",
         native_unit_of_measurement=PERCENTAGE,
-        icon= WEATHER_PARTLY_CLOUDY_ICON,
+        icon=WEATHER_PARTLY_CLOUDY_ICON,
     ),
     SensorEntityDescription(
         key="sunchance_5d",
         translation_key="sunchance_5d",
         native_unit_of_measurement=PERCENTAGE,
-        icon= WEATHER_PARTLY_CLOUDY_ICON,
+        icon=WEATHER_PARTLY_CLOUDY_ICON,
     ),
     SensorEntityDescription(
         key="windforce_1d",
         translation_key="windforce_1d",
         native_unit_of_measurement="Bft",
-        icon= WEATHER_WINDY_ICON,
+        icon=WEATHER_WINDY_ICON,
     ),
     SensorEntityDescription(
         key="windforce_2d",
         translation_key="windforce_2d",
         native_unit_of_measurement="Bft",
-        icon= WEATHER_WINDY_ICON,
+        icon=WEATHER_WINDY_ICON,
     ),
     SensorEntityDescription(
         key="windforce_3d",
         translation_key="windforce_3d",
         native_unit_of_measurement="Bft",
-        icon= WEATHER_WINDY_ICON,
+        icon=WEATHER_WINDY_ICON,
     ),
     SensorEntityDescription(
         key="windforce_4d",
         translation_key="windforce_4d",
         native_unit_of_measurement="Bft",
-        icon= WEATHER_WINDY_ICON,
+        icon=WEATHER_WINDY_ICON,
     ),
     SensorEntityDescription(
         key="windforce_5d",
         translation_key="windforce_5d",
         native_unit_of_measurement="Bft",
-        icon= WEATHER_WINDY_ICON,
+        icon=WEATHER_WINDY_ICON,
     ),
     SensorEntityDescription(
         key="windspeed_1d",
@@ -507,57 +506,57 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
         key="winddirection_1d",
         translation_key="winddirection_1d",
-        icon= COMPASS_ICON,
+        icon=COMPASS_ICON,
     ),
     SensorEntityDescription(
         key="winddirection_2d",
         translation_key="winddirection_2d",
-        icon= COMPASS_ICON,
+        icon=COMPASS_ICON,
     ),
     SensorEntityDescription(
         key="winddirection_3d",
         translation_key="winddirection_3d",
-        icon= COMPASS_ICON,
+        icon=COMPASS_ICON,
     ),
     SensorEntityDescription(
         key="winddirection_4d",
         translation_key="winddirection_4d",
-        icon= COMPASS_ICON,
+        icon=COMPASS_ICON,
     ),
     SensorEntityDescription(
         key="winddirection_5d",
         translation_key="winddirection_5d",
-        icon= COMPASS_ICON,
+        icon=COMPASS_ICON,
     ),
     SensorEntityDescription(
         key="windazimuth_1d",
         translation_key="windazimuth_1d",
         native_unit_of_measurement=DEGREE,
-        icon= COMPASS_ICON,
+        icon=COMPASS_ICON,
     ),
     SensorEntityDescription(
         key="windazimuth_2d",
         translation_key="windazimuth_2d",
         native_unit_of_measurement=DEGREE,
-        icon= COMPASS_ICON,
+        icon=COMPASS_ICON,
     ),
     SensorEntityDescription(
         key="windazimuth_3d",
         translation_key="windazimuth_3d",
         native_unit_of_measurement=DEGREE,
-        icon= COMPASS_ICON,
+        icon=COMPASS_ICON,
     ),
     SensorEntityDescription(
         key="windazimuth_4d",
         translation_key="windazimuth_4d",
         native_unit_of_measurement=DEGREE,
-        icon= COMPASS_ICON,
+        icon=COMPASS_ICON,
     ),
     SensorEntityDescription(
         key="windazimuth_5d",
         translation_key="windazimuth_5d",
         native_unit_of_measurement=DEGREE,
-        icon= COMPASS_ICON,
+        icon=COMPASS_ICON,
     ),
     SensorEntityDescription(
         key="condition_1d",
@@ -693,7 +692,9 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    entry: BuienRadarConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Create the buienradar sensor."""
     config = entry.data
@@ -726,7 +727,7 @@ async def async_setup_entry(
 
     # create weather data:
     data = BrData(hass, coordinates, timeframe, entities)
-    hass.data[DOMAIN][entry.entry_id][Platform.SENSOR] = data
+    entry.runtime_data[Platform.SENSOR] = data
     await data.async_update()
 
     async_add_entities(entities)
@@ -817,7 +818,9 @@ class BrSensor(SensorEntity):
             return self._update_weather_symbol(sensor_type, condition)
 
         if sensor_type.startswith(WINDSPEED):
-            self._attr_native_value = round(forecast_data[fcday].get(sensor_type[:-3]) * 3.6, 1)
+            self._attr_native_value = round(
+                forecast_data[fcday].get(sensor_type[:-3]) * 3.6, 1
+            )
             return True
 
         # Update other forecast sensors
@@ -859,7 +862,9 @@ class BrSensor(SensorEntity):
         """Handle precipitation forecast updates."""
         nested = data.get(PRECIPITATION_FORECAST)
         self._timeframe = nested.get(TIMEFRAME)
-        self._attr_native_value = nested.get(self.entity_description.key[len(PRECIPITATION_FORECAST) + 1 :])
+        self._attr_native_value = nested.get(
+            self.entity_description.key[len(PRECIPITATION_FORECAST) + 1 :]
+        )
         return True
 
     def _handle_wind_data(self, sensor_type: str, data) -> bool:

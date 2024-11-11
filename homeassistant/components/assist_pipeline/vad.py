@@ -75,7 +75,7 @@ class AudioBuffer:
 class VoiceCommandSegmenter:
     """Segments an audio stream into voice commands."""
 
-    speech_seconds: float = 0.3
+    speech_seconds: float = 0.1
     """Seconds of speech before voice command has started."""
 
     command_seconds: float = 1.0
@@ -95,6 +95,12 @@ class VoiceCommandSegmenter:
 
     timed_out: bool = False
     """True a timeout occurred during voice command."""
+
+    before_command_speech_threshold: float = 0.2
+    """Probability threshold for speech before voice command."""
+
+    in_command_speech_threshold: float = 0.5
+    """Probability threshold for speech during voice command."""
 
     _speech_seconds_left: float = 0.0
     """Seconds left before considering voice command as started."""
@@ -124,7 +130,7 @@ class VoiceCommandSegmenter:
         self._reset_seconds_left = self.reset_seconds
         self.in_command = False
 
-    def process(self, chunk_seconds: float, is_speech: bool | None) -> bool:
+    def process(self, chunk_seconds: float, speech_probability: float | None) -> bool:
         """Process samples using external VAD.
 
         Returns False when command is done.
@@ -135,13 +141,52 @@ class VoiceCommandSegmenter:
         if self._handle_timeout(chunk_seconds):
             return False
 
+        if speech_probability is None:
+            speech_probability = 0.0
+
         if not self.in_command:
-            self._handle_not_in_command(chunk_seconds, is_speech)
-        elif not is_speech:
-            if self._handle_silence_in_command(chunk_seconds):
-                return False
+            # Before command
+            is_speech = speech_probability > self.before_command_speech_threshold
+            if is_speech:
+                self._reset_seconds_left = self.reset_seconds
+                self._speech_seconds_left -= chunk_seconds
+                if self._speech_seconds_left <= 0:
+                    # Inside voice command
+                    self.in_command = True
+                    self._command_seconds_left = (
+                        self.command_seconds - self.speech_seconds
+                    )
+                    self._silence_seconds_left = self.silence_seconds
+                    _LOGGER.debug("Voice command started")
+            else:
+                # Reset if enough silence
+                self._reset_seconds_left -= chunk_seconds
+                if self._reset_seconds_left <= 0:
+                    self._speech_seconds_left = self.speech_seconds
+                    self._reset_seconds_left = self.reset_seconds
         else:
-            self._handle_speech_in_command(chunk_seconds)
+            # In command
+            is_speech = speech_probability > self.in_command_speech_threshold
+            if not is_speech:
+                # Silence in command
+                self._reset_seconds_left = self.reset_seconds
+                self._silence_seconds_left -= chunk_seconds
+                self._command_seconds_left -= chunk_seconds
+                if (self._silence_seconds_left <= 0) and (
+                    self._command_seconds_left <= 0
+                ):
+                    # Command finished successfully
+                    self.reset()
+                    _LOGGER.debug("Voice command finished")
+                    return False
+            else:
+                # Speech in command.
+                # Reset silence counter if enough speech.
+                self._reset_seconds_left -= chunk_seconds
+                self._command_seconds_left -= chunk_seconds
+                if self._reset_seconds_left <= 0:
+                    self._silence_seconds_left = self.silence_seconds
+                    self._reset_seconds_left = self.reset_seconds
 
         return True
 
@@ -158,47 +203,6 @@ class VoiceCommandSegmenter:
             self.timed_out = True
             done = True
         return done
-
-    def _handle_not_in_command(
-        self, chunk_seconds: float, is_speech: bool | None
-    ) -> None:
-        """Handle logic when not in command."""
-        if is_speech:
-            self._reset_seconds_left = self.reset_seconds
-            self._speech_seconds_left -= chunk_seconds
-            if self._speech_seconds_left <= 0:
-                # Inside voice command
-                self.in_command = True
-                self._command_seconds_left = self.command_seconds - self.speech_seconds
-                self._silence_seconds_left = self.silence_seconds
-                _LOGGER.debug("Voice command started")
-        else:
-            # Reset if enough silence
-            self._reset_seconds_left -= chunk_seconds
-            if self._reset_seconds_left <= 0:
-                self._speech_seconds_left = self.speech_seconds
-                self._reset_seconds_left = self.reset_seconds
-
-    def _handle_silence_in_command(self, chunk_seconds: float) -> bool:
-        """Handle silence logic when in command."""
-        done = False
-        self._reset_seconds_left = self.reset_seconds
-        self._silence_seconds_left -= chunk_seconds
-        self._command_seconds_left -= chunk_seconds
-        if self._silence_seconds_left <= 0 and self._command_seconds_left <= 0:
-            # Command finished successfully
-            self.reset()
-            _LOGGER.debug("Voice command finished")
-            done = True
-        return done
-
-    def _handle_speech_in_command(self, chunk_seconds: float) -> None:
-        """Handle speech logic when in command."""
-        self._reset_seconds_left -= chunk_seconds
-        self._command_seconds_left -= chunk_seconds
-        if self._reset_seconds_left <= 0:
-            self._silence_seconds_left = self.silence_seconds
-            self._reset_seconds_left = self.reset_seconds
 
     def process_with_vad(
         self,
@@ -245,6 +249,9 @@ class VoiceActivityTimeout:
     reset_seconds: float = 0.5
     """Seconds of speech before resetting timeout."""
 
+    speech_threshold: float = 0.5
+    """Threshold for speech."""
+
     _silence_seconds_left: float = 0.0
     """Seconds left before considering voice command as stopped."""
 
@@ -260,12 +267,15 @@ class VoiceActivityTimeout:
         self._silence_seconds_left = self.silence_seconds
         self._reset_seconds_left = self.reset_seconds
 
-    def process(self, chunk_seconds: float, is_speech: bool | None) -> bool:
+    def process(self, chunk_seconds: float, speech_probability: float | None) -> bool:
         """Process samples using external VAD.
 
         Returns False when timeout is reached.
         """
-        if is_speech:
+        if speech_probability is None:
+            speech_probability = 0.0
+
+        if speech_probability > self.speech_threshold:
             # Speech
             self._reset_seconds_left -= chunk_seconds
             if self._reset_seconds_left <= 0:

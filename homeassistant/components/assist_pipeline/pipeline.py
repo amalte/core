@@ -793,7 +793,9 @@ class PipelineRun:
                 # speaking the voice command.
                 audio_chunks_for_stt.extend(
                     EnhancedAudioChunk(
-                        audio=chunk_ts[0], timestamp_ms=chunk_ts[1], is_speech=False
+                        audio=chunk_ts[0],
+                        timestamp_ms=chunk_ts[1],
+                        speech_probability=None,
                     )
                     for chunk_ts in result.queued_audio
                 )
@@ -839,7 +841,7 @@ class PipelineRun:
 
             if wake_word_vad is not None:
                 chunk_seconds = (len(chunk.audio) // sample_width) / sample_rate
-                if not wake_word_vad.process(chunk_seconds, chunk.is_speech):
+                if not wake_word_vad.process(chunk_seconds, chunk.speech_probability):
                     raise WakeWordTimeoutError(
                         code="wake-word-timeout", message="Wake word was not detected"
                     )
@@ -975,7 +977,7 @@ class PipelineRun:
 
             if stt_vad is not None:
                 chunk_seconds = (len(chunk.audio) // sample_width) / sample_rate
-                if not stt_vad.process(chunk_seconds, chunk.is_speech):
+                if not stt_vad.process(chunk_seconds, chunk.speech_probability):
                     # Silence detected at the end of voice command
                     self.process_event(
                         PipelineEvent(
@@ -1241,7 +1243,7 @@ class PipelineRun:
                 yield EnhancedAudioChunk(
                     audio=sub_chunk,
                     timestamp_ms=timestamp_ms,
-                    is_speech=None,  # no VAD
+                    speech_probability=None,  # no VAD
                 )
                 timestamp_ms += MS_PER_CHUNK
 
