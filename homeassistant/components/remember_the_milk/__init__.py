@@ -8,12 +8,14 @@ from rtmapi import Rtm
 import voluptuous as vol
 
 from homeassistant.components import configurator
-from homeassistant.const import CONF_API_KEY, CONF_ID, CONF_NAME, CONF_TOKEN
+from homeassistant.const import CONF_API_KEY, CONF_ID, CONF_NAME, CONF_TOKEN, Platform
 from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.discovery import load_platform
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.typing import ConfigType
 
+from .coordinator import RememberTheMilkCoordinator
 from .entity import RememberTheMilkEntity
 
 # httplib2 is a transitive dependency from RtmAPI. If this dependency is not
@@ -22,6 +24,8 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "remember_the_milk"
 DEFAULT_NAME = DOMAIN
+
+PLATFORMS: list[Platform] = [Platform.TODO]
 
 CONF_SHARED_SECRET = "shared_secret"
 CONF_ID_MAP = "id_map"
@@ -77,6 +81,18 @@ def setup(hass: HomeAssistant, config: ConfigType) -> bool:
         else:
             _register_new_account(
                 hass, account_name, api_key, shared_secret, stored_rtm_config, component
+            )
+
+        coordinator = RememberTheMilkCoordinator(
+            hass, _LOGGER, api_key, shared_secret, token
+        )
+
+        hass.data.setdefault(DOMAIN, {})
+        hass.data[DOMAIN][account_name] = coordinator
+
+        for platform in PLATFORMS:
+            load_platform(
+                hass, platform, DOMAIN, {"account_name": account_name}, config
             )
 
     _LOGGER.debug("Finished adding all Remember the milk accounts")
