@@ -30,6 +30,9 @@ setup:
     - pip install --upgrade pip
     - pip install -r requirements_all.txt 
     - pip install -r requirements_test_all.txt
+    branches:
+      only:
+        - feature
 
 # Testing stage
 test:
@@ -38,6 +41,9 @@ test:
     - source venv/bin/activate
     - pytest ./tests/components/remember_the_milk/ --cov=homeassistant.components.remember_the_milk --cov-report term-missing -vv
   allow_failures: false
+  branches:
+    only:
+      - feature
 
 # SonarQube Analysis stage
 sonarcloud-check:
@@ -48,3 +54,6 @@ sonarcloud-check:
   script:
     # Other script steps might be done before running the analysis if needed
     - sonar-scanner -Dsonar.login=${SONAR_TOKEN}
+    branches:
+      only:
+        - feature
