@@ -89,20 +89,26 @@ class RememberTheMilkTodoListEntity(
         for task_list in self.coordinator.data:
             if task_list.id != self.list_id:
                 continue
-            return [
-                TodoItem(
-                    summary=taskseries.name,
-                    uid=taskseries.id + "_" + taskseries.task.id,
-                    status=TodoItemStatus.COMPLETED
-                    if taskseries.task.completed
-                    else TodoItemStatus.NEEDS_ACTION,
-                    due=taskseries.task.due,
-                    description=taskseries.notes.note.value
-                    if len(list(taskseries.notes)) > 0
-                    else "",
-                )
+            todo_items = [
+                [
+                    taskseries.task.added,
+                    TodoItem(
+                        summary=taskseries.name,
+                        uid=taskseries.id + "_" + taskseries.task.id,
+                        status=TodoItemStatus.COMPLETED
+                        if taskseries.task.completed
+                        else TodoItemStatus.NEEDS_ACTION,
+                        due=taskseries.task.due,
+                        description=taskseries.notes.note.value
+                        if len(list(taskseries.notes)) > 0
+                        else "",
+                    ),
+                ]
                 for taskseries in task_list
             ]
+            # Sort by added time
+            todo_items.sort(key=lambda x: x[0])
+            return [item[1] for item in todo_items]
         return []
 
     async def async_create_todo_item(self, item: TodoItem) -> None:
@@ -145,8 +151,3 @@ class RememberTheMilkTodoListEntity(
             item.status,
         )
         await self.coordinator.async_refresh()
-
-    async def async_move_todo_item(
-        self, uid: str, previous_uid: str | None = None
-    ) -> None:
-        """TODO: Move a To-do item."""
