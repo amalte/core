@@ -70,3 +70,22 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
             )
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
+
+    async def async_delete_task(
+        self, list_id: str, taskseries_id: str, task_id: str
+    ) -> None:
+        """Delete a task on Remember The Milk using taskseries_id and task_id."""
+        try:
+            result = await run_async(self.api.rtm.timelines.create)
+            timeline = result.timeline.value
+
+            await run_async(
+                lambda: self.api.rtm.tasks.delete(
+                    timeline=timeline,
+                    list_id=list_id,
+                    taskseries_id=taskseries_id,
+                    task_id=task_id,
+                )
+            )
+        except Exception as err:
+            raise UpdateFailed(f"Error communicating with API: {err}") from err

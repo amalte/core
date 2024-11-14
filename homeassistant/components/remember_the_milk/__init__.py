@@ -124,7 +124,7 @@ def _register_new_account(
     hass, account_name, api_key, shared_secret, stored_rtm_config, component
 ):
     request_id = None
-    api = Rtm(api_key, shared_secret, "write", None)
+    api = Rtm(api_key, shared_secret, "delete", None)
     url, frob = api.authenticate_desktop()
     _LOGGER.debug("Sent authentication request to server")
 

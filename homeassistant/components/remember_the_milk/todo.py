@@ -91,7 +91,7 @@ class RememberTheMilkTodoListEntity(
             return [
                 TodoItem(
                     summary=taskseries.name,
-                    uid=taskseries.task.id,
+                    uid=taskseries.id + "_" + taskseries.task.id,
                     status=TodoItemStatus.COMPLETED
                     if taskseries.task.completed
                     else TodoItemStatus.NEEDS_ACTION,
@@ -112,8 +112,17 @@ class RememberTheMilkTodoListEntity(
         await self.coordinator.async_refresh()
 
     async def async_delete_todo_items(self, uids: list[str]) -> None:
-        """TODO: Delete specified To-do items."""
-        pass
+        """Delete specified To-do items, each represented by a combined ID (uid) in the format 'taskseries_id_task_id'."""
+        for uid in uids:
+            try:
+                taskseries_id, task_id = uid.split("_", 1)
+                await self.coordinator.async_delete_task(
+                    self.list_id, taskseries_id, task_id
+                )
+            except ValueError:
+                continue
+
+        await self.coordinator.async_refresh()
 
     async def async_update_todo_item(self, item: TodoItem) -> None:
         """TODO: Update a To-do item."""
