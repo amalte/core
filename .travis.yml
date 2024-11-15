@@ -6,7 +6,6 @@ python:
 
 # Define the stages
 stages:
-  - setup
   - test
   - sonar
 
@@ -22,19 +21,16 @@ before_install:
 
 jobs:
   include:
-    - stage: setup
-      name: Setup Environment
+    - stage: test
+      name: Setup and Run Tests
       script:
+        # Setup steps
         - ./script/setup  # Run setup script to create virtual environment and install dependencies
         - source venv/bin/activate
         - pip install --upgrade pip
         - pip install -r requirements_all.txt 
         - pip install -r requirements_test_all.txt
-
-    - stage: test
-      name: Run Tests
-      script:
-        - source venv/bin/activate
+        # Testing steps
         - pytest ./tests/components/remember_the_milk/ --cov=homeassistant.components.remember_the_milk \
           --cov-report term-missing -vv
       allow_failures: false
@@ -47,9 +43,8 @@ jobs:
       name: SonarCloud Analysis
       addons:
         sonarcloud:
-          organization: "amalte"  # Your SonarCloud organization key
+          organization: "amalte"  # Replace with your SonarCloud organization key
       script:
-        # Other script steps might be done before running the analysis if needed
         - sonar-scanner -Dsonar.login=${SONAR_TOKEN}
       branches:
         only:
