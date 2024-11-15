@@ -31,8 +31,7 @@ jobs:
         - pip install -r requirements_all.txt 
         - pip install -r requirements_test_all.txt
         # Testing steps
-        - pytest ./tests/components/remember_the_milk/ --cov=homeassistant.components.remember_the_milk \
-          --cov-report term-missing -vv
+        - pytest ./tests/components/remember_the_milk/ --cov=homeassistant.components.remember_the_milk --cov-report term-missing -vv
       allow_failures: false
       branches:
         only:
