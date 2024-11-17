@@ -1,5 +1,6 @@
 """A todo platform for Todoist."""
 
+from datetime import UTC, datetime
 import logging
 
 from homeassistant.components.todo import (
@@ -125,11 +126,27 @@ class RememberTheMilkTodoListEntity(
         await self.coordinator.async_refresh()
 
     async def async_update_todo_item(self, item: TodoItem) -> None:
-        """TODO: Update a To-do item."""
-        pass
+        """Update specified To-do item, can update name, due date, and task completed."""
+        taskseries_id, task_id = item.uid.split("_", 1)
+        has_due_time = "1" if isinstance(item.due, datetime) else "0"
+        due_iso = ""
+        # Convert due time from date to UTC and ISO 8601 format.
+        if item.due:
+            due_date = datetime.fromisoformat(str(item.due))
+            due_iso = due_date.astimezone(UTC).isoformat()
+
+        await self.coordinator.async_update_task(
+            self.list_id,
+            item.summary,
+            taskseries_id,
+            task_id,
+            due_iso,
+            has_due_time,
+            item.status,
+        )
+        await self.coordinator.async_refresh()
 
     async def async_move_todo_item(
         self, uid: str, previous_uid: str | None = None
     ) -> None:
         """TODO: Move a To-do item."""
-        pass

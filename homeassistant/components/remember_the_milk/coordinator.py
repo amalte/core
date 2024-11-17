@@ -6,6 +6,7 @@ from typing import Any, Final
 
 from rtmapi import Rtm
 
+from homeassistant.components.todo import TodoItemStatus
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -78,7 +79,6 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
         try:
             result = await run_async(self.api.rtm.timelines.create)
             timeline = result.timeline.value
-
             await run_async(
                 lambda: self.api.rtm.tasks.delete(
                     timeline=timeline,
@@ -87,5 +87,58 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
                     task_id=task_id,
                 )
             )
+        except Exception as err:
+            raise UpdateFailed(f"Error communicating with API: {err}") from err
+
+    async def async_update_task(
+        self,
+        list_id: str,
+        name: str,
+        taskseries_id: str,
+        task_id: str,
+        due: str,
+        has_due_time: str,
+        status: str,
+    ) -> None:
+        """Update name, due date, and/or task completed status of a task on Remember The Milk."""
+        try:
+            result = await run_async(self.api.rtm.timelines.create)
+            timeline = result.timeline.value
+            complete_action = (
+                self.api.rtm.tasks.complete
+                if status == TodoItemStatus.COMPLETED
+                else self.api.rtm.tasks.uncomplete
+            )
+            # Update due date of task.
+            await run_async(
+                lambda: self.api.rtm.tasks.setDueDate(
+                    timeline=timeline,
+                    list_id=list_id,
+                    taskseries_id=taskseries_id,
+                    task_id=task_id,
+                    due=due,
+                    has_due_time=has_due_time,
+                )
+            )
+            # Update name of task.
+            await run_async(
+                lambda: self.api.rtm.tasks.setName(
+                    timeline=timeline,
+                    list_id=list_id,
+                    taskseries_id=taskseries_id,
+                    task_id=task_id,
+                    name=name,
+                )
+            )
+            # Update completed status of task.
+            await run_async(
+                lambda: complete_action(
+                    timeline=timeline,
+                    list_id=list_id,
+                    taskseries_id=taskseries_id,
+                    task_id=task_id,
+                )
+            )
+
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
