@@ -1,10 +1,5 @@
 os: linux
 dist: focal
-language: python  # Use Python as the primary language
-
-python:
-  - "3.12"  # Specify the Python version for your tests
-
 branches:
   only:
     - dev
@@ -15,14 +10,16 @@ env:
     - SONAR_USER_HOME=${TRAVIS_BUILD_DIR}/.sonar
     - GIT_DEPTH=0
 
-before_install:
-  - sudo apt-get update
-  - sudo apt-get install -y git autoconf libssl-dev libxml2-dev libxslt1-dev libjpeg-dev libffi-dev libudev-dev zlib1g-dev pkg-config libavformat-dev libavcodec-dev libavdevice-dev libavutil-dev libswscale-dev libswresample-dev libavfilter-dev ffmpeg libgammu-dev
-
 jobs:
   include:
     - stage: test
       name: Run Python Tests
+      language: python
+      python:
+        - "3.12"
+      before_install:
+        - sudo apt-get update
+        - sudo apt-get install -y git autoconf libssl-dev libxml2-dev libxslt1-dev libjpeg-dev libffi-dev libudev-dev zlib1g-dev pkg-config libavformat-dev libavcodec-dev libavdevice-dev libavutil-dev libswscale-dev libswresample-dev libavfilter-dev ffmpeg libgammu-dev
       install:
         - pip install --upgrade pip
         - pip install -r requirements_all.txt
@@ -36,9 +33,15 @@ jobs:
       language: python
       python:
         - "3.12"
-      jdk: openjdk17
       addons:
         sonarcloud:
           organization: "amalte"
+      before_install:
+        - sudo apt-get update
+        - sudo apt-get install -y openjdk-17-jdk
+        - sudo update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-17-openjdk-amd64/bin/java 1
+        - sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+        - java -version  # Verify Java version
+      install: skip
       script:
         - sonar-scanner
