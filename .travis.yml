@@ -1,17 +1,13 @@
 os: linux
 dist: focal
-language: python
-python:
-  - "3.12"
+language: java
+jdk: openjdk17
 
 addons:
-  apt:
-    packages:
-      - openjdk-17-jdk
   sonarcloud:
     organization: "amalte" # the key of the org you chose at step #3
     token:
-      secure: "$SONAR_TOKEN"
+      secure: $SONAR_TOKEN
 
 
 branches:
