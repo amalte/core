@@ -9,6 +9,55 @@ env:
   global:
     - SONAR_USER_HOME=${TRAVIS_BUILD_DIR}/.sonar
     - GIT_DEPTH=0
+os: linux
+dist: focal
+branches:
+  only:
+    - dev
+    - /^feature\/.*/
+
+env:
+  global:
+    - SONAR_USER_HOME=${TRAVIS_BUILD_DIR}/.sonar
+    - GIT_DEPTH=0
+
+jobs:
+  include:
+    - stage: test
+      name: Run Python Tests
+      language: python
+      python:
+        - "3.12"
+      before_install:
+        - sudo apt-get update
+        - sudo apt-get install -y git autoconf libssl-dev libxml2-dev libxslt1-dev libjpeg-dev libffi-dev libudev-dev zlib1g-dev pkg-config libavformat-dev libavcodec-dev libavdevice-dev libavutil-dev libswscale-dev libswresample-dev libavfilter-dev ffmpeg libgammu-dev
+      install:
+        - pip install --upgrade pip
+        - pip install -r requirements_all.txt
+        - pip install -r requirements_test_all.txt
+      script:
+        - ./script/setup
+        - pytest ./tests/components/remember_the_milk/ --cov=homeassistant.components.remember_the_milk --cov-report term-missing --cov-fail-under=50 -rw -vv
+
+    - stage: sonar
+      name: SonarCloud Analysis
+      language: python
+      python:
+        - "3.12"
+      addons:
+        sonarcloud:
+          organization: "amalte"
+      before_install:
+        - sudo apt-get update
+        - sudo apt-get install -y openjdk-17-jdk
+        - export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+        - export PATH=$JAVA_HOME/bin:$PATH
+        - java -version  # Verify Java version
+        - which java     # Verify Java path
+        - echo $PATH     # Debug PATH
+      install: skip
+      script:
+        - sonar-scanner
 
 jobs:
   include:
