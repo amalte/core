@@ -8,6 +8,11 @@ addons:
   apt:
     packages:
       - openjdk-17-jdk
+  sonarcloud:
+    organization: "amalte" # the key of the org you chose at step #3
+    token:
+      secure: "$SONAR_TOKEN"
+
 
 branches:
   only:
@@ -43,11 +48,4 @@ jobs:
         sonarcloud:
           organization: "amalte"
       script:
-        - if [ -z "$SONAR_TOKEN" ]; then echo "SONAR_TOKEN is not set"; exit 1; fi
-        - sonar-scanner \
-            -Dsonar.projectKey=amalte \
-            -Dsonar.organization=amalte \
-            -Dsonar.sources=. \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=${SONAR_TOKEN} \
-            -Dsonar.branch.name=${TRAVIS_BRANCH}
+        - sonar-scanner
