@@ -24,12 +24,6 @@ env:
 before_install:
   - sudo apt-get update
   - sudo apt-get install -y git autoconf libssl-dev libxml2-dev libxslt1-dev libjpeg-dev libffi-dev libudev-dev zlib1g-dev pkg-config libavformat-dev libavcodec-dev libavdevice-dev libavutil-dev libswscale-dev libswresample-dev libavfilter-dev ffmpeg libgammu-dev
-  - wget https://github.com/sormuras/bach/raw/master/install-jdk.sh
-  - chmod +x install-jdk.sh
-  - curl -sSL https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip -o sonar-scanner.zip
-  - unzip sonar-scanner.zip -d $HOME
-  - export SONAR_SCANNER_HOME=$HOME/sonar-scanner-4.8.0.2856-linux
-  - export PATH=$SONAR_SCANNER_HOME/bin:$PATH
 
 install:
   - pip install --upgrade pip
@@ -46,6 +40,7 @@ jobs:
 
     - stage: sonar
       name: SonarCloud Analysis
+      jdk: openjdk17  # Use built-in JDK installation
       script:
         # Switch to Java 17 for SonarCloud
         - ./install-jdk.sh -F 17 --target $HOME/openjdk17
