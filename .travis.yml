@@ -5,12 +5,6 @@ language: python  # Use Python as the primary language
 python:
   - "3.12"  # Specify the Python version for your tests
 
-addons:
-  sonarcloud:
-    organization: "amalte" # Replace with your SonarCloud organization key
-    token:
-      secure: $SONAR_TOKEN
-
 branches:
   only:
     - dev
@@ -25,26 +19,26 @@ before_install:
   - sudo apt-get update
   - sudo apt-get install -y git autoconf libssl-dev libxml2-dev libxslt1-dev libjpeg-dev libffi-dev libudev-dev zlib1g-dev pkg-config libavformat-dev libavcodec-dev libavdevice-dev libavutil-dev libswscale-dev libswresample-dev libavfilter-dev ffmpeg libgammu-dev
 
-install:
-  - pip install --upgrade pip
-  - pip install -r requirements_all.txt
-  - pip install -r requirements_test_all.txt
-
 jobs:
   include:
     - stage: test
       name: Run Python Tests
+      install:
+        - pip install --upgrade pip
+        - pip install -r requirements_all.txt
+        - pip install -r requirements_test_all.txt
       script:
         - ./script/setup
         - pytest ./tests/components/remember_the_milk/ --cov=homeassistant.components.remember_the_milk --cov-report term-missing --cov-fail-under=50 -rw -vv
 
     - stage: sonar
       name: SonarCloud Analysis
-      jdk: openjdk17  # Use built-in JDK installation
+      language: python
+      python:
+        - "3.12"
+      jdk: openjdk17
+      addons:
+        sonarcloud:
+          organization: "amalte"
       script:
-        # Switch to Java 17 for SonarCloud
-        - ./install-jdk.sh -F 17 --target $HOME/openjdk17
-        - export JAVA_HOME=$HOME/openjdk17
-        - export PATH=$JAVA_HOME/bin:$PATH
-        - java -version  # Debug: Verify Java version
         - sonar-scanner
