@@ -3,7 +3,7 @@ dist: focal
 language: python  # Use Python as the primary language
 
 python:
-  - "3.9"  # Specify the Python version for your tests
+  - "3.12"  # Specify the Python version for your tests
 
 addons:
   sonarcloud:
