@@ -35,7 +35,6 @@ jobs:
     - stage: test
       name: Setup and Run Tests
       script:
-        - set -e  # Stop on any error
         - ./script/setup
         - pip install --upgrade pip
         - pip install -r requirements_all.txt
