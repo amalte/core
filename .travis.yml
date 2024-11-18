@@ -9,7 +9,6 @@ addons:
     token:
       secure: $SONAR_TOKEN
 
-
 branches:
   only:
     - dev
@@ -19,13 +18,15 @@ env:
   global:
     - SONAR_USER_HOME=${TRAVIS_BUILD_DIR}/.sonar
     - GIT_DEPTH=0
+    - PATH=$HOME/sonar-scanner-4.8.0.2856-linux/bin:$PATH
 
 before_install:
   - sudo apt-get update
   - sudo apt-get install -y git python3-pip python3-dev python3-venv autoconf libssl-dev libxml2-dev libxslt1-dev libjpeg-dev libffi-dev libudev-dev zlib1g-dev pkg-config libavformat-dev libavcodec-dev libavdevice-dev libavutil-dev libswscale-dev libswresample-dev libavfilter-dev ffmpeg libgammu-dev
   - curl -sSL https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip -o sonar-scanner.zip
   - unzip sonar-scanner.zip -d $HOME
-  - export PATH=$HOME/sonar-scanner-4.8.0.2856-linux/bin:$PATH
+  - export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 # Explicitly set Java 17 path
+  - export PATH=$JAVA_HOME/bin:$PATH # Update PATH to prioritize Java 17
 
 jobs:
   include:
