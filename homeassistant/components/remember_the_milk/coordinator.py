@@ -4,7 +4,7 @@ from datetime import timedelta
 import logging
 from typing import Any, Final
 
-from rtmapi import Rtm, RtmObject
+from rtmapi import Rtm
 
 from homeassistant.components.todo import TodoItemStatus
 from homeassistant.core import HomeAssistant
@@ -77,6 +77,17 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
+    async def count_completed_tasks(self) -> int:
+        """Count the total number of completed tasks across all task lists."""
+        if self.data is None:
+            return 0
+        completed_tasks = 0
+        for task_list in self.data:
+            for taskseries in task_list:
+                if taskseries.task.completed:
+                    completed_tasks += 1
+        return completed_tasks
+
     async def async_delete_task(
         self, list_id: str, taskseries_id: str, task_id: str
     ) -> None:
@@ -112,18 +123,24 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
             old_task = next(
                 (
                     taskseries
-                    for task_list in self.data if task_list.id == list_id
-                    for taskseries in task_list if taskseries.id == taskseries_id
+                    for task_list in self.data
+                    if task_list.id == list_id
+                    for taskseries in task_list
+                    if taskseries.id == taskseries_id
                 ),
                 None,
             )
             if not old_task:
-                raise ValueError(f"Old task with ID {taskseries_id} not found") 
+                raise ValueError(f"Old task with ID {taskseries_id} not found")
 
             # Updates that should be made to the new task.
             change_name = old_task.name != name
             change_due_date = old_task.task.due != due
-            old_complete_status = TodoItemStatus.COMPLETED if old_task.task.completed else TodoItemStatus.NEEDS_ACTION,
+            old_complete_status = (
+                TodoItemStatus.COMPLETED
+                if old_task.task.completed
+                else TodoItemStatus.NEEDS_ACTION,
+            )
             change_complete_status = old_complete_status != status
 
             timeline = result.timeline.value
