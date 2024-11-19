@@ -25,7 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 DOMAIN = "remember_the_milk"
 DEFAULT_NAME = DOMAIN
 
-PLATFORMS: list[Platform] = [Platform.TODO]
+PLATFORMS: list[Platform] = [Platform.TODO, Platform.SENSOR]
 
 CONF_SHARED_SECRET = "shared_secret"
 CONF_ID_MAP = "id_map"

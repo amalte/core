@@ -44,18 +44,23 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
 
     async def async_get_task_lists(self) -> list[Any]:
         """Return Remember The Milk task lists fetched at most once."""
-        return (await run_async(self.api.rtm.lists.getList)).lists
+        try:
+            return (await run_async(self.api.rtm.lists.getList)).lists
+        except Exception as err:
+            raise UpdateFailed(f"Error communicating with API: {err}") from err
 
-    async def async_get_tasks(self, list_id: str) -> list[dict[str, Any]]:
+    async def async_get_tasks(self, list_id: str) -> list[Any]:
         """Return tasks from the Remember The Milk API."""
         try:
             task_lists = (
                 await run_async(self.api.rtm.tasks.getList(list_id=list_id))
             ).tasks
             # Get the first list of tasks
-            return list(task_lists.list)
+            task_list = task_lists.list
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
+        else:
+            return task_list
 
     async def async_create_task(
         self, list_id: str, task_name: str, due: str, description: str
