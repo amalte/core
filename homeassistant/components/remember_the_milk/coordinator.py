@@ -4,7 +4,7 @@ from datetime import timedelta
 import logging
 from typing import Any, Final
 
-from rtmapi import Rtm
+from rtmapi import Rtm, RtmObject
 
 from homeassistant.components.todo import TodoItemStatus
 from homeassistant.core import HomeAssistant
@@ -108,42 +108,63 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
         """Update name, due date, and/or task completed status of a task on Remember The Milk."""
         try:
             result = await run_async(self.api.rtm.timelines.create)
+            # Find the old task to see what updates should be made.
+            old_task = next(
+                (
+                    taskseries
+                    for task_list in self.data if task_list.id == list_id
+                    for taskseries in task_list if taskseries.id == taskseries_id
+                ),
+                None,
+            )
+            if not old_task:
+                raise ValueError(f"Old task with ID {taskseries_id} not found") 
+
+            # Updates that should be made to the new task.
+            change_name = old_task.name != name
+            change_due_date = old_task.task.due != due
+            old_complete_status = TodoItemStatus.COMPLETED if old_task.task.completed else TodoItemStatus.NEEDS_ACTION,
+            change_complete_status = old_complete_status != status
+
             timeline = result.timeline.value
             complete_action = (
                 self.api.rtm.tasks.complete
                 if status == TodoItemStatus.COMPLETED
                 else self.api.rtm.tasks.uncomplete
             )
-            # Update due date of task.
-            await run_async(
-                lambda: self.api.rtm.tasks.setDueDate(
-                    timeline=timeline,
-                    list_id=list_id,
-                    taskseries_id=taskseries_id,
-                    task_id=task_id,
-                    due=due,
-                    has_due_time=has_due_time,
-                )
-            )
             # Update name of task.
-            await run_async(
-                lambda: self.api.rtm.tasks.setName(
-                    timeline=timeline,
-                    list_id=list_id,
-                    taskseries_id=taskseries_id,
-                    task_id=task_id,
-                    name=name,
+            if change_name:
+                await run_async(
+                    lambda: self.api.rtm.tasks.setName(
+                        timeline=timeline,
+                        list_id=list_id,
+                        taskseries_id=taskseries_id,
+                        task_id=task_id,
+                        name=name,
+                    )
                 )
-            )
+            # Update due date of task.
+            if change_due_date:
+                await run_async(
+                    lambda: self.api.rtm.tasks.setDueDate(
+                        timeline=timeline,
+                        list_id=list_id,
+                        taskseries_id=taskseries_id,
+                        task_id=task_id,
+                        due=due,
+                        has_due_time=has_due_time,
+                    )
+                )
             # Update completed status of task.
-            await run_async(
-                lambda: complete_action(
-                    timeline=timeline,
-                    list_id=list_id,
-                    taskseries_id=taskseries_id,
-                    task_id=task_id,
+            if change_complete_status:
+                await run_async(
+                    lambda: complete_action(
+                        timeline=timeline,
+                        list_id=list_id,
+                        taskseries_id=taskseries_id,
+                        task_id=task_id,
+                    )
                 )
-            )
 
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
