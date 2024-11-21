@@ -1,6 +1,6 @@
 """DataUpdateCoordinator for the Todoist component."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 from typing import Any, Final
 
@@ -10,7 +10,7 @@ from homeassistant.components.todo import TodoItemStatus
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .util import run_async
+from .util import get_time_range, run_async
 
 UPDATE_INTERVAL: Final = timedelta(minutes=1)
 
@@ -77,16 +77,90 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
-    async def count_completed_tasks(self) -> int:
-        """Count the total number of completed tasks across all task lists."""
+    def get_statistics(
+        self, details_range: str = "day", trend_range: str = "week"
+    ) -> dict[str, int]:
+        """Return statistics of tasks for the details and trend range."""
         if self.data is None:
-            return 0
+            return {}
+        today_tasks = 0
         completed_tasks = 0
+        details = {}
+        trend = {}
+
+        today = datetime.now()
+
+        if details_range == "day":
+            details_start, details_end = get_time_range(today, "day")
+        elif details_range == "week":
+            details_start, details_end = get_time_range(today, "week")
+        else:
+            details_start, details_end = None, None
+
+        if trend_range == "week":
+            trend_start, trend_end = get_time_range(today, "week")
+            trend_index_range = 7
+        elif trend_range == "month":
+            trend_start, trend_end = get_time_range(today, "month")
+            trend_index_range = trend_end.day
+        else:
+            trend_start, trend_end = None, None
+            trend_index_range = 0
+
         for task_list in self.data:
             for taskseries in task_list:
-                if taskseries.task.completed:
+                has_due_time = taskseries.task.has_due_time
+                is_completed = taskseries.task.completed
+
+                # Count the number of all completed tasks.
+                if is_completed:
                     completed_tasks += 1
-        return completed_tasks
+
+                if has_due_time and has_due_time == "1":
+                    due_time = datetime.strptime(
+                        taskseries.task.due, "%Y-%m-%dT%H:%M:%SZ"
+                    )
+                else:
+                    due_time = datetime.strptime(
+                        taskseries.task.added, "%Y-%m-%dT%H:%M:%SZ"
+                    )
+
+                # Count the number of today's tasks.
+                if due_time.date() == datetime.now().date():
+                    today_tasks += 1
+
+                # Count the number of tasks and completed tasks for the details range.
+                if (
+                    details_start
+                    and details_end
+                    and details_start <= due_time <= details_end
+                ):
+                    details["total"] = details.get("total", 0) + 1
+                    if is_completed:
+                        details["completed"] = details.get("completed", 0) + 1
+
+                # Count the number of tasks and completed tasks for the trend range.
+                if trend_start and trend_end and trend_start <= due_time <= trend_end:
+                    date = due_time.date()
+                    if date not in trend:
+                        trend[date] = {"total": 0, "completed": 0}
+                    trend[date]["total"] += 1
+                    if is_completed:
+                        trend[date]["completed"] += 1
+
+        # Make the trend have index from 0 to 6 or 0 to 29, based on the time range.
+        for i in range(trend_index_range):
+            date = (trend_start + timedelta(days=i)).date()
+            if date not in trend:
+                trend[i] = {"total": 0, "completed": 0}
+            else:
+                trend[i] = trend.pop(date)
+
+        return {
+            "summary": {"today_tasks": today_tasks, "completed_tasks": completed_tasks},
+            "details": details,
+            "trend": trend,
+        }
 
     async def async_delete_task(
         self, list_id: str, taskseries_id: str, task_id: str

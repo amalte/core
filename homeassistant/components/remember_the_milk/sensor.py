@@ -147,3 +147,6 @@ class RememberTheMilkSensor(SensorEntity):
 
         self._attributes = {"task_lists": all_task_lists, "items": task_list_items}
         self._state = task_list_id
+
+        statistics = self._coordinator.get_statistics()
+        self._attributes.update({"statistics": statistics})
