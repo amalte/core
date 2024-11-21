@@ -1,5 +1,6 @@
 """Platform for sensor integration."""
 
+import json
 import logging
 from typing import Any
 
@@ -13,8 +14,12 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .coordinator import RememberTheMilkCoordinator
 
-SERVICE_UPDATE_STATE_TASKS = "update_state_tasks"
-SERVICE_SCHEMA_UPDATE_STATE_TASKS = vol.Schema({vol.Required("list_id"): cv.string})
+SERVICE_UPDATE_TASK_LIST = "update_task_list"
+SERVICE_RTM_METHOD = "rtm_method"
+SERVICE_SCHEMA_UPDATE_TASK_LIST = vol.Schema({vol.Required("list_id"): cv.string})
+SERVICE_SCHEMA_RTM_METHOD = vol.Schema(
+    {vol.Required("payload"): cv.string, vol.Required("method"): cv.string}
+)
 DOMAIN = "remember_the_milk"
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,7 +55,7 @@ async def async_setup_platform(
 
     async_add_entities(sensor_entities, True)
 
-    async def handle_update_state_tasks(call: ServiceCall) -> None:
+    async def handle_update_task_list(call: ServiceCall) -> None:
         """Handle the service call to update the state of the sensor."""
         list_id = call.data.get("list_id")
         if not list_id:
@@ -59,11 +64,29 @@ async def async_setup_platform(
 
         sensor_entities[0].update_state(list_id)
 
+    async def handle_rtm_method(call: ServiceCall) -> None:
+        """Handle the service call to send a method to Remember The Milk."""
+        method = call.data.get("method")
+        payload = call.data.get("payload")
+        if not method or not payload:
+            _LOGGER.error("Service call missing 'method' or 'payload' parameter")
+            return
+        # Parse the payload from a string to a JSON object
+        payload = json.loads(payload)
+        await coordinator.async_run_rtm_method(method, payload)
+
     hass.services.async_register(
         DOMAIN,
-        SERVICE_UPDATE_STATE_TASKS,
-        handle_update_state_tasks,
-        schema=SERVICE_SCHEMA_UPDATE_STATE_TASKS,
+        SERVICE_UPDATE_TASK_LIST,
+        handle_update_task_list,
+        schema=SERVICE_SCHEMA_UPDATE_TASK_LIST,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_RTM_METHOD,
+        handle_rtm_method,
+        schema=SERVICE_SCHEMA_RTM_METHOD,
     )
 
 

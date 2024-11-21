@@ -77,6 +77,19 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
+    async def async_run_rtm_method(self, request, payload) -> Any:
+        """Run a request to the Remember The Milk API."""
+        try:
+            result = await run_async(self.api.rtm.timelines.create)
+            timeline = result.timeline.value
+            # The request parameter may be in format "rtm.tasks.getList".
+            lib, module, method = request.split(".")
+            request = getattr(getattr(getattr(self.api, lib), module), method)
+            # Combine the timeline parameter with the other parameters.
+            return await run_async(lambda: request(timeline=timeline, **payload))
+        except Exception as err:
+            raise UpdateFailed(f"Error communicating with API: {err}") from err
+
     def get_statistics(
         self, details_range: str = "day", trend_range: str = "week"
     ) -> dict[str, int]:
