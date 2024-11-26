@@ -14,6 +14,7 @@ class RememberTheMilkCard extends HTMLElement {
                 <button id="add-task-btn" style="padding: 5px 10px; margin-top: 5px;">Add Task</button>
               </div>
               <div id="tasks"></div>
+              <div id="completed-tasks"></div>
               <div id="pagination" style="text-align: center; margin-top: 10px;">
                 <button id="prev-page" style="margin-right: 10px;" disabled>Previous</button>
                 <span id="page-number">Page 1</span>
@@ -26,6 +27,7 @@ class RememberTheMilkCard extends HTMLElement {
       `;
       this.taskListsContainer = this.querySelector("#task-lists");
       this.taskItemsContainer = this.querySelector("#tasks");
+      this.completedTasksContainer = this.querySelector("#completed-tasks");
       this.paginationContainer = this.querySelector("#pagination");
       this.pageNumberElement = this.querySelector("#page-number");
       this.prevButton = this.querySelector("#prev-page");
@@ -55,27 +57,91 @@ class RememberTheMilkCard extends HTMLElement {
       const endIdx = page * tasksPerPage;
       const tasksToDisplay = taskItems.slice(startIdx, endIdx);
 
-      // Display the tasks for the current page
+      const uncompletedTasks = tasksToDisplay.filter(
+        (task) => task.status !== "completed",
+      );
+      const completedTasks = tasksToDisplay.filter(
+        (task) => task.status === "completed",
+      );
+
       this.taskItemsContainer.innerHTML = `
         <strong>Tasks:</strong>
         <div>
-          ${tasksToDisplay
+          ${uncompletedTasks
             .map(
               (task) => `
-            <div style="position: relative; margin-bottom: 10px; padding: 10px; background: #f9f9f9; border: 1px solid #ccc; border-radius: 5px;">
-              <span style="font-weight: bold;">${task.summary}</span>
-              <button data-task-id="${task.uid}" class="delete-task-btn"
-                style="position: absolute; top: 5px; right: 5px; background: none; border: none; color: red; font-size: 18px; cursor: pointer;">
-                ×
-              </button>
-            </div>
-          `
+              <div style="display: flex; align-items: center; margin-bottom: 10px; padding: 10px; background: #f9f9f9; border: 1px solid #ccc; border-radius: 5px; max-width: 90%;">
+                <input type="checkbox" data-task-id="${
+                  task.uid
+                }" class="status-toggle" />
+                <div style="display: flex; flex: 1; justify-content: space-between; align-items: center;">
+                  <span style="font-weight: bold; margin-right: 8px; font-size: 10px;">${
+                    task.summary
+                  }</span>
+                  ${
+                    task.due
+                      ? `<span style="background: #ffdddd; color: #d32f2f; font-size: 10px; padding: 1px 3px; border-radius: 3px; white-space: nowrap;">
+                          ${new Date(task.due).toLocaleString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>`
+                      : ""
+                  }
+                  <button data-task-id="${task.uid}" class="delete-task-btn"
+                    style="margin-left: 10px; background: none; border: none; color: red; font-size: 18px; cursor: pointer;">
+                    ×
+                  </button>
+                </div>
+              </div>
+            `,
             )
             .join("")}
         </div>
       `;
 
-      // Update the page number and enable/disable pagination buttons
+      this.completedTasksContainer.innerHTML = `
+        <strong>Completed:</strong>
+        <div>
+          ${completedTasks
+            .map(
+              (task) => `
+              <div style="display: flex; align-items: center; margin-bottom: 10px; padding: 10px; background: #f1f8e9; border: 1px solid #ccc; border-radius: 5px; max-width: 90%;">
+                <input type="checkbox" data-task-id="${
+                  task.uid
+                }" class="status-toggle" checked />
+                <div style="display: flex; flex: 1; justify-content: space-between; align-items: center;">
+                  <span style="font-weight: bold; margin-right: 8px; font-size: 10px; text-decoration: line-through;">${
+                    task.summary
+                  }</span>
+                  ${
+                    task.due
+                      ? `<span style="background: #e8f5e9; color: #4caf50; font-size: 10px; padding: 1px 3px; border-radius: 3px; white-space: nowrap;">
+                          ${new Date(task.due).toLocaleString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>`
+                      : ""
+                  }
+                  <button data-task-id="${task.uid}" class="delete-task-btn"
+                    style="margin-left: 10px; background: none; border: none; color: red; font-size: 18px; cursor: pointer;">
+                    ×
+                  </button>
+                </div>
+              </div>
+            `,
+            )
+            .join("")}
+        </div>
+      `;
+
       this.pageNumberElement.textContent = `Page ${page}`;
       this.prevButton.disabled = page === 1;
       this.nextButton.disabled = page === totalPages;
@@ -96,6 +162,44 @@ class RememberTheMilkCard extends HTMLElement {
         displayTasks(currentPage);
       }
     });
+
+    // Event listener for toggling task completion
+    const handleTaskStatusChange = async (event) => {
+      if (event.target.classList.contains("status-toggle")) {
+        const taskUid = event.target.dataset.taskId;
+        const isChecked = event.target.checked;
+
+        const [taskseriesId, taskId] = taskUid.split("_");
+        const payload = {
+          list_id: selectedTaskListId,
+          taskseries_id: taskseriesId,
+          task_id: taskId,
+        };
+
+        try {
+          if (isChecked) {
+            await hass.callService("remember_the_milk", "rtm_method", {
+              method: "rtm.tasks.complete",
+              payload: JSON.stringify(payload),
+            });
+          } else {
+            await hass.callService("remember_the_milk", "rtm_method", {
+              method: "rtm.tasks.uncomplete",
+              payload: JSON.stringify(payload),
+            });
+          }
+          alert("Task status updated successfully!");
+        } catch (error) {
+          alert(`Error updating task status: ${error.message}`);
+        }
+        displayTasks(currentPage);
+      }
+    };
+    this.taskItemsContainer.addEventListener("change", handleTaskStatusChange);
+    this.completedTasksContainer.addEventListener(
+      "change",
+      handleTaskStatusChange,
+    );
 
     // Display All The Task Lists in the left section
     this.taskListsContainer.innerHTML = `
@@ -142,7 +246,7 @@ class RememberTheMilkCard extends HTMLElement {
                 : ""
             }
           </li>
-        `
+        `,
           )
           .join("")}
       </ul>
@@ -159,16 +263,10 @@ class RememberTheMilkCard extends HTMLElement {
             return;
 
           try {
-            hass
-              .callService("remember_the_milk", "rtm_method", {
-                method: "rtm.lists.delete",
-                payload: JSON.stringify({ list_id: listId }),
-              })
-              .then(() =>
-                hass.callService("homeassistant", "update_entity", {
-                  entity_id: this.config.entity,
-                })
-              );
+            await hass.callService("remember_the_milk", "rtm_method", {
+              method: "rtm.lists.delete",
+              payload: JSON.stringify({ list_id: listId }),
+            });
             alert("Task list deleted successfully!");
           } catch (error) {
             console.error("Failed to delete task list:", error);
@@ -178,35 +276,29 @@ class RememberTheMilkCard extends HTMLElement {
       });
 
     // Delete individual task functionality
-    this.taskItemsContainer
-      .querySelectorAll(".delete-task-btn")
-      .forEach((btn) => {
-        btn.addEventListener("click", async (event) => {
-          const taskUid = event.target.dataset.taskId;
-          const [taskseriesId, taskId] = taskUid.split("_");
+    this.taskItemsContainer.addEventListener("click", async (event) => {
+      if (event.target.classList.contains("delete-task-btn")) {
+        const taskUid = event.target.dataset.taskId;
+        const [taskseriesId, taskId] = taskUid.split("_");
 
-          const payload = {
-            list_id: selectedTaskListId,
-            taskseries_id: taskseriesId,
-            task_id: taskId,
-          };
-          try {
-            hass
-              .callService("remember_the_milk", "rtm_method", {
-                method: "rtm.tasks.delete",
-                payload: JSON.stringify(payload),
-              })
-              .then(() =>
-                hass.callService("homeassistant", "update_entity", {
-                  entity_id: this.config.entity,
-                })
-              );
-            alert("Task deleted successfully!");
-          } catch (error) {
-            alert(`Error deleting task: ${error.message}`);
-          }
-        });
-      });
+        const payload = {
+          list_id: selectedTaskListId,
+          taskseries_id: taskseriesId,
+          task_id: taskId,
+        };
+        try {
+          await hass.callService("remember_the_milk", "rtm_method", {
+            method: "rtm.tasks.delete",
+            payload: JSON.stringify(payload),
+          });
+          alert("Task deleted successfully!");
+          // Refresh the task display after deletion
+          displayTasks(currentPage);
+        } catch (error) {
+          alert(`Error deleting task: ${error.message}`);
+        }
+      }
+    });
 
     // Add Task button click handler
     const addTaskButton = this.querySelector("#add-task-btn");
@@ -225,16 +317,10 @@ class RememberTheMilkCard extends HTMLElement {
         };
 
         try {
-          hass
-            .callService("remember_the_milk", "rtm_method", {
-              method: "rtm.tasks.add",
-              payload: JSON.stringify(payload),
-            })
-            .then(() =>
-              hass.callService("homeassistant", "update_entity", {
-                entity_id: this.config.entity,
-              })
-            );
+          await hass.callService("remember_the_milk", "rtm_method", {
+            method: "rtm.tasks.add",
+            payload: JSON.stringify(payload),
+          });
           alert("Task added successfully!");
         } catch (error) {
           alert(`Error adding task: ${error.message}`);
