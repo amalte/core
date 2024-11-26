@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .util import get_time_range, run_async
+from .notifications import RememberTheMilkNotifications
 
 UPDATE_INTERVAL: Final = timedelta(minutes=1)
 
@@ -33,12 +34,16 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
             name="Remember The Milk",
             update_interval=UPDATE_INTERVAL,
         )
+        self.notifications = RememberTheMilkNotifications(hass)
         self.api = Rtm(api_key, shared_secret, "delete", token=token)
 
     async def _async_update_data(self) -> list[dict[str, Any]]:
         """Fetch tasks from the Remember The Milk API."""
         try:
-            return (await run_async(self.api.rtm.tasks.getList)).tasks
+            data = (await run_async(self.api.rtm.tasks.getList)).tasks
+            await self.notifications.update_notifications(data)
+            return data
+        
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
