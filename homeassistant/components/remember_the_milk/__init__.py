@@ -87,6 +87,8 @@ def setup(hass: HomeAssistant, config: ConfigType) -> bool:
             hass, _LOGGER, api_key, shared_secret, token
         )
 
+        hass.create_task(coordinator.rate_limiter.start())
+
         hass.data.setdefault(DOMAIN, {})
         hass.data[DOMAIN][account_name] = coordinator
 

@@ -1,6 +1,7 @@
 """Utility functions for Remember The Milk integration."""
 
 import asyncio
+from collections.abc import Callable
 from datetime import datetime, timedelta
 
 
@@ -30,7 +31,46 @@ def get_time_range(target_datetime: datetime, range_type: str):
     return start_time, end_time
 
 
-async def run_async(func):
+class RateLimiter:
+    """A rate limiter that limits the rate of function calls."""
+
+    def __init__(self, rate: float) -> None:
+        """Define the rate limit in seconds."""
+        self.rate = rate
+        self.queue = asyncio.Queue()
+        self.task = None
+
+    async def start(self):
+        """Start the worker."""
+        self.task = asyncio.create_task(self._worker())
+
+    async def _worker(self):
+        """Process the queue and execute the functions."""
+        while True:
+            func, future = await self.queue.get()
+            try:
+                result = await func()
+                future.set_result(result)
+            except Exception as e:
+                future.set_exception(e)
+            await asyncio.sleep(self.rate)
+            self.queue.task_done()
+
+    async def call(self, func: Callable):
+        """Call a function and limit the rate of calls."""
+        future = asyncio.get_event_loop().create_future()
+        await self.queue.put((func, future))
+        return await future
+
+
+async def run_async(
+    rate_limiter: RateLimiter,
+    func: Callable,
+):
     """Run a synchronous function in an asynchronous context."""
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, func)
+
+    async def wrapper():
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, func)
+
+    return await rate_limiter.call(wrapper)

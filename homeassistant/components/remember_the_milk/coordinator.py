@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .notifications import RememberTheMilkNotifications
-from .util import get_time_range, run_async
+from .util import RateLimiter, get_time_range, run_async
 
 UPDATE_INTERVAL: Final = timedelta(minutes=1)
 
@@ -36,21 +36,31 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
         )
         self.notifications = RememberTheMilkNotifications(hass)
         self.api = Rtm(api_key, shared_secret, "delete", token=token)
+        self.rate_limiter = RateLimiter(rate=0.3)  # 3 requests per second
+        self.initialized = False
+
+    async def async_setup_rate_limiter(self):
+        """Start the rate limiter."""
+        await self.rate_limiter.start()
 
     async def _async_update_data(self) -> list[dict[str, Any]]:
         """Fetch tasks from the Remember The Milk API."""
         try:
-            data = (await run_async(self.api.rtm.tasks.getList)).tasks
+            data = (
+                await run_async(self.rate_limiter, self.api.rtm.tasks.getList)
+            ).tasks
             await self.notifications.update_notifications(data)
-            return data
-
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
+        else:
+            return data
 
     async def async_get_task_lists(self) -> list[Any]:
         """Return Remember The Milk task lists fetched at most once."""
         try:
-            return (await run_async(self.api.rtm.lists.getList)).lists
+            return (
+                await run_async(self.rate_limiter, self.api.rtm.lists.getList)
+            ).lists
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
@@ -58,7 +68,10 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
         """Return tasks from the Remember The Milk API."""
         try:
             task_lists = (
-                await run_async(self.api.rtm.tasks.getList(list_id=list_id))
+                await run_async(
+                    self.rate_limiter,
+                    lambda: self.api.rtm.tasks.getList(list_id=list_id),
+                )
             ).tasks
             # Get the first list of tasks
             task_list = task_lists.list
@@ -72,12 +85,13 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
     ) -> None:
         """TODO: Create a new task on Remember The Milk."""
         try:
-            result = await run_async(self.api.rtm.timelines.create)
+            result = await run_async(self.rate_limiter, self.api.rtm.timelines.create)
             timeline = result.timeline.value
             await run_async(
+                self.rate_limiter,
                 lambda: self.api.rtm.tasks.add(
                     timeline=timeline, name=task_name, parse="1", list_id=list_id
-                )
+                ),
             )
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
@@ -85,13 +99,15 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
     async def async_run_rtm_method(self, request, payload) -> Any:
         """Run a request to the Remember The Milk API."""
         try:
-            result = await run_async(self.api.rtm.timelines.create)
+            result = await run_async(self.rate_limiter, self.api.rtm.timelines.create)
             timeline = result.timeline.value
             # The request parameter may be in format "rtm.tasks.getList".
             lib, module, method = request.split(".")
             request = getattr(getattr(getattr(self.api, lib), module), method)
             # Combine the timeline parameter with the other parameters.
-            return await run_async(lambda: request(timeline=timeline, **payload))
+            return await run_async(
+                self.rate_limiter, lambda: request(timeline=timeline, **payload)
+            )
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
@@ -185,15 +201,16 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
     ) -> None:
         """Delete a task on Remember The Milk using taskseries_id and task_id."""
         try:
-            result = await run_async(self.api.rtm.timelines.create)
+            result = await run_async(self.rate_limiter, self.api.rtm.timelines.create)
             timeline = result.timeline.value
             await run_async(
+                self.rate_limiter,
                 lambda: self.api.rtm.tasks.delete(
                     timeline=timeline,
                     list_id=list_id,
                     taskseries_id=taskseries_id,
                     task_id=task_id,
-                )
+                ),
             )
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
@@ -210,7 +227,7 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
     ) -> None:
         """Update name, due date, and/or task completed status of a task on Remember The Milk."""
         try:
-            result = await run_async(self.api.rtm.timelines.create)
+            result = await run_async(self.rate_limiter, self.api.rtm.timelines.create)
             # Find the old task to see what updates should be made.
             old_task = next(
                 (
@@ -244,17 +261,19 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
             # Update name of task.
             if change_name:
                 await run_async(
+                    self.rate_limiter,
                     lambda: self.api.rtm.tasks.setName(
                         timeline=timeline,
                         list_id=list_id,
                         taskseries_id=taskseries_id,
                         task_id=task_id,
                         name=name,
-                    )
+                    ),
                 )
             # Update due date of task.
             if change_due_date:
                 await run_async(
+                    self.rate_limiter,
                     lambda: self.api.rtm.tasks.setDueDate(
                         timeline=timeline,
                         list_id=list_id,
@@ -262,17 +281,18 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
                         task_id=task_id,
                         due=due,
                         has_due_time=has_due_time,
-                    )
+                    ),
                 )
             # Update completed status of task.
             if change_complete_status:
                 await run_async(
+                    self.rate_limiter,
                     lambda: complete_action(
                         timeline=timeline,
                         list_id=list_id,
                         taskseries_id=taskseries_id,
                         task_id=task_id,
-                    )
+                    ),
                 )
 
         except Exception as err:
