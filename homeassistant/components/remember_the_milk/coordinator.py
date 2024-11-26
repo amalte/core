@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for the Todoist component."""
+"""Coordinator for Remember The Milk integration."""
 
 from datetime import datetime, timedelta
 import logging
@@ -10,8 +10,8 @@ from homeassistant.components.todo import TodoItemStatus
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .util import get_time_range, run_async
 from .notifications import RememberTheMilkNotifications
+from .util import get_time_range, run_async
 
 UPDATE_INTERVAL: Final = timedelta(minutes=1)
 
@@ -43,7 +43,7 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
             data = (await run_async(self.api.rtm.tasks.getList)).tasks
             await self.notifications.update_notifications(data)
             return data
-        
+
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 

@@ -18,7 +18,11 @@ SERVICE_UPDATE_TASK_LIST = "update_task_list"
 SERVICE_RTM_METHOD = "rtm_method"
 SERVICE_SCHEMA_UPDATE_TASK_LIST = vol.Schema({vol.Required("list_id"): cv.string})
 SERVICE_SCHEMA_RTM_METHOD = vol.Schema(
-    {vol.Required("payload"): cv.string, vol.Required("method"): cv.string}
+    {
+        vol.Required("payload"): cv.string,
+        vol.Required("method"): cv.string,
+        vol.Optional("refresh", default=True): cv.boolean,
+    }
 )
 DOMAIN = "remember_the_milk"
 _LOGGER = logging.getLogger(__name__)
@@ -68,12 +72,15 @@ async def async_setup_platform(
         """Handle the service call to send a method to Remember The Milk."""
         method = call.data.get("method")
         payload = call.data.get("payload")
+        refresh = call.data.get("refresh", True)
         if not method or not payload:
             _LOGGER.error("Service call missing 'method' or 'payload' parameter")
             return
         # Parse the payload from a string to a JSON object
         payload = json.loads(payload)
         await coordinator.async_run_rtm_method(method, payload)
+        if refresh:
+            await coordinator.async_refresh()
 
     hass.services.async_register(
         DOMAIN,

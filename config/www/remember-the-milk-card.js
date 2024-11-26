@@ -69,7 +69,7 @@ class RememberTheMilkCard extends HTMLElement {
                 ×
               </button>
             </div>
-          `,
+          `
             )
             .join("")}
         </div>
@@ -142,7 +142,7 @@ class RememberTheMilkCard extends HTMLElement {
                 : ""
             }
           </li>
-        `,
+        `
           )
           .join("")}
       </ul>
@@ -159,10 +159,16 @@ class RememberTheMilkCard extends HTMLElement {
             return;
 
           try {
-            await hass.callService("remember_the_milk", "rtm_method", {
-              method: "rtm.lists.delete",
-              payload: JSON.stringify({ list_id: listId }),
-            });
+            hass
+              .callService("remember_the_milk", "rtm_method", {
+                method: "rtm.lists.delete",
+                payload: JSON.stringify({ list_id: listId }),
+              })
+              .then(() =>
+                hass.callService("homeassistant", "update_entity", {
+                  entity_id: this.config.entity,
+                })
+              );
             alert("Task list deleted successfully!");
           } catch (error) {
             console.error("Failed to delete task list:", error);
@@ -185,10 +191,16 @@ class RememberTheMilkCard extends HTMLElement {
             task_id: taskId,
           };
           try {
-            await hass.callService("remember_the_milk", "rtm_method", {
-              method: "rtm.tasks.delete",
-              payload: JSON.stringify(payload),
-            });
+            hass
+              .callService("remember_the_milk", "rtm_method", {
+                method: "rtm.tasks.delete",
+                payload: JSON.stringify(payload),
+              })
+              .then(() =>
+                hass.callService("homeassistant", "update_entity", {
+                  entity_id: this.config.entity,
+                })
+              );
             alert("Task deleted successfully!");
           } catch (error) {
             alert(`Error deleting task: ${error.message}`);
@@ -213,10 +225,16 @@ class RememberTheMilkCard extends HTMLElement {
         };
 
         try {
-          await hass.callService("remember_the_milk", "rtm_method", {
-            method: "rtm.tasks.add",
-            payload: JSON.stringify(payload),
-          });
+          hass
+            .callService("remember_the_milk", "rtm_method", {
+              method: "rtm.tasks.add",
+              payload: JSON.stringify(payload),
+            })
+            .then(() =>
+              hass.callService("homeassistant", "update_entity", {
+                entity_id: this.config.entity,
+              })
+            );
           alert("Task added successfully!");
         } catch (error) {
           alert(`Error adding task: ${error.message}`);

@@ -1,4 +1,4 @@
-"""A todo platform for Todoist."""
+"""Support for Remember The Milk todo lists."""
 
 from datetime import UTC, datetime
 import logging
