@@ -84,7 +84,7 @@ class RememberTheMilkTodoListEntity(
     def todo_items(self) -> list[TodoItem]:
         """Return the current set of To-do items."""
         if self.coordinator.data is None:
-            return None
+            return []
         for task_list in self.coordinator.data:
             if task_list.id != self.list_id:
                 continue
