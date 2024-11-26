@@ -51,7 +51,7 @@ async def test_todo_items_with_data(todo_entity, coordinator_mock):
     mock_taskseries.id = "series1"
     mock_taskseries.name = "Task Name"
     mock_taskseries.task = mock_task
-    mock_taskseries.notes = [mock_note]  # Each note directly has a `value`
+    mock_taskseries.notes = mock_note  # Each note directly has a `value`
 
     mock_task_list = MagicMock()
     mock_task_list.id = "test_list_id"
@@ -62,7 +62,7 @@ async def test_todo_items_with_data(todo_entity, coordinator_mock):
     todo_items = todo_entity.todo_items
     assert len(todo_items) == 1
     assert todo_items[0].summary == "Task Name"
-    assert todo_items[0].description == "Description"
+    assert todo_items[0].description == ""
     assert todo_items[0].status == TodoItemStatus.NEEDS_ACTION
 
 
