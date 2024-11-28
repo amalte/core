@@ -117,6 +117,7 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
         """Return statistics of tasks for the details and trend range."""
         if self.data is None:
             return {}
+        total_tasks = 0
         today_tasks = 0
         completed_tasks = 0
         details = {}
@@ -146,6 +147,7 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
                 has_due_time = taskseries.task.has_due_time
                 is_completed = taskseries.task.completed
 
+                total_tasks += 1
                 # Count the number of all completed tasks.
                 if is_completed:
                     completed_tasks += 1
@@ -191,7 +193,11 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
                 trend[i] = trend.pop(date)
 
         return {
-            "summary": {"today_tasks": today_tasks, "completed_tasks": completed_tasks},
+            "summary": {
+                "total_tasks": total_tasks,
+                "today_tasks": today_tasks,
+                "completed_tasks": completed_tasks,
+            },
             "details": details,
             "trend": trend,
         }
