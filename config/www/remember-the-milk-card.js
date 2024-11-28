@@ -40,9 +40,6 @@ class RememberTheMilkCard extends HTMLElement {
                   <button id="tab-today" class="stats-tab-btn" style="padding: 10px 15px; border-radius: 5px; border: none; background-color: #43b7f9; color: white; font-size: 16px; font-weight: normal; cursor: pointer;">Day</button>
                 </li>
                 <li style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px;">
-                  <button id="tab-week" class="stats-tab-btn" style="padding: 10px 15px; border-radius: 5px; border: none; background-color: #43b7f9; color: white; font-size: 16px; font-weight: normal; cursor: pointer;">Week</button>
-                </li>
-                <li style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px;">
                   <button id="tab-all" class="stats-tab-btn" style="padding: 10px 15px; border-radius: 5px; border: none; background-color: #43b7f9; color: white; font-size: 16px; font-weight: normal; cursor: pointer;">All</button>
                 </li>
               </ul>
@@ -96,26 +93,29 @@ class RememberTheMilkCard extends HTMLElement {
         <strong>Tasks:</strong>
         <div>
           ${uncompletedTasks
-          .map(
-            (task) => `
+            .map(
+              (task) => `
               <div style="display: flex; align-items: center; margin-bottom: 10px; padding: 10px; background: #f9f9f9; border: 1px solid #ccc; border-radius: 5px; max-width: 90%;">
-                <input type="checkbox" data-task-id="${task.uid
-              }" class="status-toggle" />
+                <input type="checkbox" data-task-id="${
+                  task.uid
+                }" class="status-toggle" />
                 <div style="display: flex; flex: 1; justify-content: space-between; align-items: center;">
-                  <span style="font-weight: bold; margin-right: 8px; font-size: 10px;">${task.summary
-              }</span>
-                  ${task.due
-                ? `<span style="background: #ffdddd; color: #d32f2f; font-size: 10px; padding: 1px 3px; border-radius: 3px; white-space: nowrap;">
+                  <span style="font-weight: bold; margin-right: 8px; font-size: 10px;">${
+                    task.summary
+                  }</span>
+                  ${
+                    task.due
+                      ? `<span style="background: #ffdddd; color: #d32f2f; font-size: 10px; padding: 1px 3px; border-radius: 3px; white-space: nowrap;">
                           ${new Date(task.due).toLocaleString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </span>`
-                : ""
-              }
+                      : ""
+                  }
                   <button data-task-id="${task.uid}" class="delete-task-btn"
                     style="margin-left: 10px; background: none; border: none; color: red; font-size: 18px; cursor: pointer;">
                     ×
@@ -123,8 +123,8 @@ class RememberTheMilkCard extends HTMLElement {
                 </div>
               </div>
             `,
-          )
-          .join("")}
+            )
+            .join("")}
         </div>
       `;
 
@@ -132,26 +132,29 @@ class RememberTheMilkCard extends HTMLElement {
         <strong>Completed:</strong>
         <div>
           ${completedTasks
-          .map(
-            (task) => `
+            .map(
+              (task) => `
               <div style="display: flex; align-items: center; margin-bottom: 10px; padding: 10px; background: #f1f8e9; border: 1px solid #ccc; border-radius: 5px; max-width: 90%;">
-                <input type="checkbox" data-task-id="${task.uid
-              }" class="status-toggle" checked />
+                <input type="checkbox" data-task-id="${
+                  task.uid
+                }" class="status-toggle" checked />
                 <div style="display: flex; flex: 1; justify-content: space-between; align-items: center;">
-                  <span style="font-weight: bold; margin-right: 8px; font-size: 10px; text-decoration: line-through;">${task.summary
-              }</span>
-                  ${task.due
-                ? `<span style="background: #e8f5e9; color: #4caf50; font-size: 10px; padding: 1px 3px; border-radius: 3px; white-space: nowrap;">
+                  <span style="font-weight: bold; margin-right: 8px; font-size: 10px; text-decoration: line-through;">${
+                    task.summary
+                  }</span>
+                  ${
+                    task.due
+                      ? `<span style="background: #e8f5e9; color: #4caf50; font-size: 10px; padding: 1px 3px; border-radius: 3px; white-space: nowrap;">
                           ${new Date(task.due).toLocaleString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </span>`
-                : ""
-              }
+                      : ""
+                  }
                   <button data-task-id="${task.uid}" class="delete-task-btn"
                     style="margin-left: 10px; background: none; border: none; color: red; font-size: 18px; cursor: pointer;">
                     ×
@@ -159,8 +162,8 @@ class RememberTheMilkCard extends HTMLElement {
                 </div>
               </div>
             `,
-          )
-          .join("")}
+            )
+            .join("")}
         </div>
       `;
 
@@ -197,29 +200,20 @@ class RememberTheMilkCard extends HTMLElement {
 
       // Extract statistics from the entity attributes
       const statsContent = this.querySelector("#stats-content");
+      const completed_tasks_today = statistics.details.completed || 0;
+      const total_tasks_today = statistics.details.total || 0;
 
-      const { completed_tasks_week = 0, total_tasks_week = 0 } = statistics.summary;
-      const completed_tasks_today = statistics.details && statistics.details.completed ? statistics.details.completed : 0;
-      const total_tasks_today = statistics.details && statistics.details.total ? statistics.details.total : 0;
       const completed_tasks_all_time = statistics.summary.completed_tasks || 0;
       const total_tasks_all_time = statistics.summary.total_tasks || 0;
 
       // Tab click event listeners
       const tabToday = this.querySelector("#tab-today");
-      const tabWeek = this.querySelector("#tab-week");
       const tabAll = this.querySelector("#tab-all");
 
       tabToday.addEventListener("click", () => {
         statsContent.innerHTML = `
           <p>Completed Tasks Today: ${completed_tasks_today}</p>
-          <p>Total Tasks Due Today: ${total_tasks_today}</p>
-        `;
-      });
-
-      tabWeek.addEventListener("click", () => {
-        statsContent.innerHTML = `
-          <p>Completed Tasks This Week: ${completed_tasks_week}</p>
-          <p>Total Tasks Due This Week: ${total_tasks_week}</p>
+          <p>Total Tasks Today: ${total_tasks_today}</p>
         `;
       });
 
@@ -233,10 +227,9 @@ class RememberTheMilkCard extends HTMLElement {
       // Default view to 'Day'
       statsContent.innerHTML = `
         <p>Completed Tasks Today: ${completed_tasks_today}</p>
-        <p>Total Tasks Due Today: ${total_tasks_today}</p>
+        <p>Total Tasks Today: ${total_tasks_today}</p>
       `;
     });
-
 
     closeModalButton.addEventListener("click", () => {
       statsModal.style.display = "none";
@@ -247,7 +240,6 @@ class RememberTheMilkCard extends HTMLElement {
       statsModal.style.display = "none";
       modalBackdrop.style.display = "none";
     });
-
 
     // Event listener for toggling task completion
     const handleTaskStatusChange = async (event) => {
