@@ -3,6 +3,7 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.event import async_track_point_in_time
 from datetime import datetime, timedelta, UTC
 from rtmapi import RtmIterableObject
+from zoneinfo import ZoneInfo
 
 class RememberTheMilkNotifications():
     """Notifications for sending reminders that tasks are due for Remember The Milk."""
@@ -12,6 +13,7 @@ class RememberTheMilkNotifications():
         self.hass = hass
         self._notification_offset = timedelta(hours=1) # Time gap before sending notification.
         self._notifications_sent = set() # Contains task ids to keep track of notifications sent.
+        self.timezone = ZoneInfo(hass.config.time_zone)
     
     async def update_notifications(self, data: RtmIterableObject):
         """Sends notification reminders on home assistant for tasks with due date in the notification offset time."""
@@ -20,14 +22,14 @@ class RememberTheMilkNotifications():
         active_tasks = {taskseries.task.id for taskseries in tasks_due_list}
         self._notifications_sent.intersection_update(active_tasks)
 
-        curr_time = datetime.now()
-        
+        curr_time = datetime.now(self.timezone)
+
         for taskseries in tasks_due_list:
             # Skip iteration if already sent notification for this task.
             if taskseries.task.id in self._notifications_sent:
                 continue
 
-            notify_time = datetime.fromisoformat(taskseries.task.due).replace(tzinfo=None) + timedelta(hours=1)
+            notify_time = datetime.fromisoformat(taskseries.task.due).astimezone(self.timezone)
 
             # Skip iteration if due date is in the past.
             if curr_time > notify_time:

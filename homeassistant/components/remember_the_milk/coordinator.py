@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 import logging
 from typing import Any, Final
+from zoneinfo import ZoneInfo
 
 from rtmapi import Rtm
 
@@ -34,6 +35,7 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
             name="Remember The Milk",
             update_interval=UPDATE_INTERVAL,
         )
+        self.timezone = ZoneInfo(hass.config.time_zone)
         self.notifications = RememberTheMilkNotifications(hass)
         self.api = Rtm(api_key, shared_secret, "delete", token=token)
         self.rate_limiter = RateLimiter(rate=0.3)  # 3 requests per second
@@ -123,7 +125,7 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
         details = {}
         trend = {}
 
-        today = datetime.now()
+        today = datetime.now(self.timezone)
 
         if details_range == "day":
             details_start, details_end = get_time_range(today, "day")
@@ -144,7 +146,6 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
 
         for task_list in self.data:
             for taskseries in task_list:
-                has_due_time = taskseries.task.has_due_time
                 is_completed = taskseries.task.completed
 
                 total_tasks += 1
@@ -152,17 +153,18 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
                 if is_completed:
                     completed_tasks += 1
 
-                if has_due_time and has_due_time == "1":
-                    due_time = datetime.strptime(
-                        taskseries.task.due, "%Y-%m-%dT%H:%M:%SZ"
+                if taskseries.task.due:
+                    # Covert the UTC due time to the timezone of the user.
+                    due_time = datetime.fromisoformat(taskseries.task.due).astimezone(
+                        self.timezone
                     )
                 else:
-                    due_time = datetime.strptime(
-                        taskseries.task.added, "%Y-%m-%dT%H:%M:%SZ"
+                    due_time = datetime.fromisoformat(taskseries.task.added).astimezone(
+                        self.timezone
                     )
 
                 # Count the number of today's tasks.
-                if due_time.date() == datetime.now().date():
+                if due_time.date() == today.date():
                     today_tasks += 1
 
                 # Count the number of tasks and completed tasks for the details range.
