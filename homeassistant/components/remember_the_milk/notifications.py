@@ -42,7 +42,7 @@ class RememberTheMilkNotifications():
         due_list = []
         for task_list in data:
             for taskseries in task_list:
-                if taskseries.task.due:
+                if taskseries.task.due and not taskseries.task.completed:
                     due_list.append(taskseries)
             
         return due_list
