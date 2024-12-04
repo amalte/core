@@ -1,12 +1,106 @@
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, ANY
 
 import pytest
 
 from homeassistant.components.todo import TodoItem, TodoItemStatus
 from homeassistant.components.remember_the_milk.todo import (
     RememberTheMilkTodoListEntity,
+    async_setup_platform,
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import Entity
+
+
+def test_initialization(todo_entity):
+    """Test initialization of RememberTheMilkTodoListEntity."""
+    assert todo_entity.account_name == "test_account"
+    assert todo_entity.list_id == "test_list_id"
+
+
+@pytest.mark.asyncio
+async def test_async_setup_platform_no_discovery_info():
+    """Test setup platform with no discovery info."""
+    async_add_entities = AsyncMock()
+    hass = MagicMock()
+
+    await async_setup_platform(hass, None, async_add_entities, discovery_info=None)
+
+    async_add_entities.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_async_setup_platform_no_account_name(caplog):
+    """Test setup platform with no account name in discovery info."""
+    async_add_entities = AsyncMock()
+    hass = MagicMock()
+
+    await async_setup_platform(
+        hass,
+        None,
+        async_add_entities,
+        discovery_info={},
+    )
+
+    assert "No account name found in discovery_info" in caplog.text
+    async_add_entities.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_async_setup_platform_valid_setup():
+    """Test setup platform with valid setup."""
+    async_add_entities = AsyncMock()
+    hass = MagicMock()
+    mock_coordinator = AsyncMock()
+    hass.data = {
+        "remember_the_milk": {
+            "test_account": mock_coordinator,
+        }
+    }
+
+    mock_task_list_1 = MagicMock(id="list1", name="List 1")
+    mock_task_list_2 = MagicMock(id="list2", name="List 2")
+    mock_coordinator.async_get_task_lists.return_value = [
+        mock_task_list_1,
+        mock_task_list_2,
+    ]
+
+    with patch(
+        "homeassistant.components.remember_the_milk.todo.RememberTheMilkTodoListEntity"
+    ) as mock_entity:
+        mock_entity.side_effect = (
+            lambda coordinator, account_name, list_id, list_name: f"Entity({list_id})"
+        )
+
+        await async_setup_platform(
+            hass,
+            None,
+            async_add_entities,
+            discovery_info={"account_name": "test_account"},
+        )
+
+        mock_coordinator.async_get_task_lists.assert_called_once()
+        async_add_entities.assert_called_once_with(
+            ["Entity(list1)", "Entity(list2)"], True
+        )
+
+
+@pytest.mark.asyncio
+async def test_async_setup_platform_no_coordinator(caplog):
+    """Test setup platform with no coordinator found."""
+    async_add_entities = AsyncMock()
+    hass = MagicMock()
+    hass.data = {"remember_the_milk": {}}
+
+    await async_setup_platform(
+        hass,
+        None,
+        async_add_entities,
+        discovery_info={"account_name": "test_account"},
+    )
+
+    assert "No coordinator found for account test_account" in caplog.text
+    async_add_entities.assert_not_called()
 
 
 @pytest.fixture
