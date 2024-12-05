@@ -87,6 +87,68 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
             # Return the fetched task data
             return data
 
+    async def _check_duplicate_lists(
+        self, list_id: str, taskseries_id: str, task_name: str, operation: str
+    ) -> list[str]:
+        """Check for duplicate task lists.
+
+        Args:
+            list_id: ID of the target list
+            taskseries_id: ID of the task series to be operated
+            task_name: Name of the new task to be operated
+            operation: Operation to be performed (add/update/delete)
+
+        Returns:
+            List of IDs of lists that would be identical after adding the task
+
+        """
+
+        # Get all task lists
+        task_lists = await self.async_get_task_lists()
+        if task_lists is None or self.data is None:
+            return []
+
+        # Create a dictionary of task lists with ID as key and name as value
+        task_list_dict = {}
+        for task_list in task_lists:
+            task_list_dict[task_list.id] = task_list.name
+
+        # Get tasks for target list
+        target_tasks_dict = {
+            taskseries.id: taskseries.name
+            for task_list in self.data
+            if task_list.id == list_id
+            for taskseries in task_list
+        }
+
+        # Get the set of task names for the target list
+        target_tasks = set(target_tasks_dict.values())
+        if operation == "add":
+            # Add the task name
+            target_tasks.add(task_name)
+        elif operation == "update":
+            # Update the task name.
+            # First remove the old task name, then add the new task name
+            target_tasks.remove(target_tasks_dict.get(taskseries_id))
+            target_tasks.add(task_name)
+        elif operation == "delete":
+            # Delete the task name
+            target_tasks.remove(target_tasks_dict.get(taskseries_id))
+
+        # If no tasks in the target list, return empty list
+        if len(target_tasks) == 0:
+            return []
+
+        # Find lists with identical content
+        duplicate_lists = [
+            task_list.id
+            for task_list in self.data
+            if task_list.id != list_id
+            and target_tasks == {taskseries.name for taskseries in task_list}
+        ]
+
+        return [task_list_dict[list_id] for list_id in duplicate_lists]
+
     async def async_get_task_lists(self) -> list[Any]:
         """Return Remember The Milk task lists fetched at most once.
 
@@ -152,9 +214,16 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
 
         Raises:
             UpdateFailed: If there is an error communicating with the API.
+            ValueError: If the new task contributes to a duplicate list.
 
         """
         try:
+            # Check for duplicate tasks in the target list
+            duplicate_lists = await self._check_duplicate_lists(
+                list_id, "", task_name, "add"
+            )
+            if len(duplicate_lists) > 0:
+                self.raise_duplicate_list_error(duplicate_lists)
             # Create a new timeline entry asynchronously with rate limiting
             result = await run_async(self.rate_limiter, self.api.rtm.timelines.create)
             timeline = result.timeline.value
@@ -165,6 +234,8 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
                     timeline=timeline, name=task_name, parse="1", list_id=list_id
                 ),
             )
+        except ValueError:
+            raise
         except Exception as err:
             # Raise an UpdateFailed exception if an error occurs
             raise UpdateFailed(f"Error communicating with API: {err}") from err
@@ -184,19 +255,32 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
 
         Raises:
             UpdateFailed: If there is an error communicating with the API.
+            ValueError: If the new task contributes to a duplicate list.
 
         """
         try:
+            # Split the request string to access the appropriate API method
+            lib, module, method = request.split(".")
+            if module == "tasks" and method in ("add", "setName", "delete"):
+                list_id = payload.get("list_id")
+                taskseries_id = payload.get("taskseries_id")
+                task_name = payload.get("name")
+                operation = method if method != "setName" else "update"
+                duplicate_lists = await self._check_duplicate_lists(
+                    list_id, taskseries_id, task_name, operation
+                )
+                if len(duplicate_lists) > 0:
+                    self.raise_duplicate_list_error(duplicate_lists)
             # Create a new timeline entry asynchronously with rate limiting
             result = await run_async(self.rate_limiter, self.api.rtm.timelines.create)
             timeline = result.timeline.value
-            # Split the request string to access the appropriate API method
-            lib, module, method = request.split(".")
             request_method = getattr(getattr(getattr(self.api, lib), module), method)
             # Execute the API method with the timeline and provided payload
             return await run_async(
                 self.rate_limiter, lambda: request_method(timeline=timeline, **payload)
             )
+        except ValueError:
+            raise
         except Exception as err:
             # Raise an UpdateFailed exception if an error occurs
             raise UpdateFailed(f"Error communicating with API: {err}") from err
@@ -326,9 +410,16 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
 
         Raises:
             UpdateFailed: If there is an error communicating with the API.
+            ValueError: If the new task contributes to a duplicate list.
 
         """
         try:
+            # Check for duplicate tasks in the target list
+            duplicate_lists = await self._check_duplicate_lists(
+                list_id, taskseries_id, "", "delete"
+            )
+            if len(duplicate_lists) > 0:
+                self.raise_duplicate_list_error(duplicate_lists)
             # Create a new timeline entry asynchronously with rate limiting
             result = await run_async(self.rate_limiter, self.api.rtm.timelines.create)
             timeline = result.timeline.value
@@ -342,6 +433,8 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
                     task_id=task_id,
                 ),
             )
+        except ValueError:
+            raise
         except Exception as err:
             # Raise an UpdateFailed exception if an error occurs
             raise UpdateFailed(f"Error communicating with API: {err}") from err
@@ -370,9 +463,16 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
         Raises:
             UpdateFailed: If there is an error communicating with the API.
             ValueError: If the old task is not found in the current data.
+            Or if the new task contributes to a duplicate list.
 
         """
         try:
+            # Check for duplicate tasks in the target list
+            duplicate_lists = await self._check_duplicate_lists(
+                list_id, taskseries_id, name, "update"
+            )
+            if len(duplicate_lists) > 0:
+                self.raise_duplicate_list_error(duplicate_lists)
             # Create a new timeline entry asynchronously with rate limiting
             result = await run_async(self.rate_limiter, self.api.rtm.timelines.create)
             # Find the existing task in the current data
@@ -444,7 +544,17 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
                         task_id=task_id,
                     ),
                 )
-
+        except ValueError:
+            raise
         except Exception as err:
             # Raise an UpdateFailed exception if an error occurs
             raise UpdateFailed(f"Error communicating with API: {err}") from err
+
+    def raise_duplicate_list_error(self, duplicate_lists: list[str]) -> None:
+        """Raise ValueError if duplicate lists are found.
+
+        duplicate_lists: List of lists with duplicate tasks
+        """
+        raise ValueError(
+            f"Tasks will be same in the following lists: {', '.join(duplicate_lists)}. Please check the duplicate lists before proceeding."
+        )

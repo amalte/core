@@ -152,13 +152,10 @@ class RememberTheMilkTodoListEntity(
 
         """
         for uid in uids:
-            try:
-                taskseries_id, task_id = uid.split("_", 1)
-                await self.coordinator.async_delete_task(
-                    self.list_id, taskseries_id, task_id
-                )
-            except ValueError:
-                continue
+            taskseries_id, task_id = uid.split("_", 1)
+            await self.coordinator.async_delete_task(
+                self.list_id, taskseries_id, task_id
+            )
         await self.coordinator.async_refresh()
 
     async def async_update_todo_item(self, item: TodoItem) -> None:
