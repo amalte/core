@@ -1,13 +1,12 @@
 """ "Tests for the Remember The Milk utility functions."""
 
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import ANY, AsyncMock, Mock, call, patch
+from datetime import datetime
+from unittest.mock import ANY, AsyncMock, Mock, patch
 
 import pytest
 
-import homeassistant.components.remember_the_milk.util as util
-from homeassistant.core import HomeAssistant
+from homeassistant.components.remember_the_milk import util
 
 
 @pytest.mark.asyncio
