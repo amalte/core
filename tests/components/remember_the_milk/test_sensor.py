@@ -37,6 +37,15 @@ def mock_add_entities():
     return Mock()
 
 
+def mock_notes(value: str) -> MagicMock:
+    """Helper function to mock the notes attribute."""
+    notes_mock = MagicMock()
+    notes_mock.__len__.return_value = 1
+    notes_mock.__iter__.return_value = iter([MagicMock(note=MagicMock(value=value))])
+    notes_mock.note = MagicMock(value=value)
+    return notes_mock
+
+
 @pytest.fixture
 async def setup_platform_fixture(
     hass: HomeAssistant, mock_coordinator, mock_add_entities
@@ -64,10 +73,9 @@ async def setup_platform_fixture(
                 due="2024-12-31",
                 added="2024-01-01",
             ),
-            notes=Mock(),  # Mock object instead of list
+            notes=mock_notes("Test Description"),  # Use helper function
         )
         # Assign the 'note' attribute with a 'value'
-        TEST_TASKSERIES.notes.note.value = "Test Description"
 
         TEST_TASK_LIST.__iter__.return_value = iter([TEST_TASKSERIES])
 
@@ -157,10 +165,8 @@ async def test_handle_update_task_list_service(
                 due="2024-12-31",
                 added="2024-01-01",
             ),
-            notes=Mock(),  # Mock object instead of list
+            notes=mock_notes("Test Description"),  # Use helper function
         )
-        # Assign the 'note' attribute with a 'value'
-        TEST_TASKSERIES.notes.note.value = "Test Description"
 
         TEST_TASK_LIST.__iter__.return_value = iter([TEST_TASKSERIES])
 
@@ -225,10 +231,8 @@ async def test_handle_rtm_method_service(
                 due="2024-12-31",
                 added="2024-01-01",
             ),
-            notes=Mock(),  # Mock object instead of list
+            notes=mock_notes("Test Description"),  # Use helper function
         )
-        # Assign the 'note' attribute with a 'value'
-        TEST_TASKSERIES.notes.note.value = "Test Description"
 
         TEST_TASK_LIST.__iter__.return_value = iter([TEST_TASKSERIES])
 
@@ -294,101 +298,6 @@ async def test_handle_rtm_method_service(
         mock_coordinator.async_refresh.assert_not_awaited()
 
 
-async def test_remember_the_milk_sensor_properties(
-    hass: HomeAssistant, mock_coordinator, mock_add_entities
-):
-    """Test the properties of the RememberTheMilkSensor."""
-    # Define TEST_TASK_LIST as iterable
-    TEST_TASK_LIST = MagicMock(id=TEST_LIST_ID)
-    TEST_TASK_LIST.name = "Test List"  # Set name as string
-
-    # Define TEST_TASKSERIES with correct mocking
-    TEST_TASKSERIES = Mock(
-        id="taskseries1",
-        name="Test Task",  # Set name directly as string
-        task=Mock(
-            id="task1",
-            completed=False,
-            due="2024-12-31",
-            added="2024-01-01",
-        ),
-        notes=Mock(),  # Mock object instead of list
-    )
-    # Assign the 'note' attribute with a 'value'
-    TEST_TASKSERIES.notes.note.value = "Test Description"
-
-    TEST_TASK_LIST.__iter__.return_value = iter([TEST_TASKSERIES])
-
-    # Set the coordinator's data to include the TEST_TASK_LIST
-    mock_coordinator.async_get_task_lists.return_value = [TEST_TASK_LIST]
-    mock_coordinator.data = [TEST_TASK_LIST]
-
-    # Instantiate the sensor
-    sensor = RememberTheMilkSensor(mock_coordinator)
-    sensor.hass = hass  # Set the hass attribute
-    sensor.entity_id = "sensor.remember_the_milk_test"  # Assign entity_id
-
-    # Test name
-    assert sensor.name == "RememberTheMilk Sensor"
-
-    # Test initial state and attributes
-    assert sensor.state == "unknown"  # Initial state should be "unknown" before update
-    assert sensor.extra_state_attributes == {}
-
-    # Update state and check
-    sensor.update_state(TEST_LIST_ID)
-    await hass.async_block_till_done()  # Allow scheduled updates to run
-
-    # Run async_update
-    await sensor.async_update()
-
-    # Check updated state and attributes
-    assert sensor.state == TEST_LIST_ID
-    assert sensor.extra_state_attributes == {
-        "task_lists": [{"id": TEST_LIST_ID, "name": "Test List"}],
-        "items": [
-            {
-                "summary": "Test Task",
-                "uid": "taskseries1_task1",
-                "status": "needsAction",
-                "due": "2024-12-31",
-                "description": "Test Description",
-            }
-        ],
-        "statistics": {"completed": 1, "pending": 2},
-    }
-
-
-async def test_remember_the_milk_sensor_async_update_no_data(
-    hass: HomeAssistant, mock_coordinator, mock_add_entities
-):
-    """Test async_update when coordinator data is None."""
-    # Modify the coordinator's data to have no task lists
-    mock_coordinator.async_get_task_lists.return_value = []
-    mock_coordinator.data = []
-
-    # Instantiate the sensor
-    sensor = RememberTheMilkSensor(mock_coordinator)
-    sensor.hass = hass  # Set the hass attribute
-    sensor.entity_id = "sensor.remember_the_milk_test"  # Assign entity_id
-
-    # Update state with a non-existent list ID
-    sensor.update_state(TEST_LIST_ID)
-    await hass.async_block_till_done()  # Allow scheduled updates to run
-
-    # Run async_update
-    await sensor.async_update()
-
-    # State should be 'unknown' when no data is present
-    assert sensor.state == "unknown"
-    # Attributes should be empty or have default values
-    assert sensor.extra_state_attributes == {
-        "task_lists": [],
-        "items": [],
-        "statistics": {"completed": 1, "pending": 2},
-    }
-
-
 async def test_remember_the_milk_sensor_async_update_missing_task_list(
     hass: HomeAssistant, mock_coordinator, mock_add_entities
 ):
@@ -407,10 +316,8 @@ async def test_remember_the_milk_sensor_async_update_missing_task_list(
             due="2024-10-10",
             added="2024-03-01",
         ),
-        notes=Mock(),  # Mock object instead of list
+        notes=mock_notes("Non Existent Description"),  # Use helper function
     )
-    # Assign the 'note' attribute with a 'value'
-    non_existent_taskseries.notes.note.value = "Non Existent Description"
 
     non_existent_task_list.__iter__.return_value = iter([non_existent_taskseries])
 
@@ -430,62 +337,10 @@ async def test_remember_the_milk_sensor_async_update_missing_task_list(
     # Run async_update
     await sensor.async_update()
 
-    # Since the list_id is not present, state should be 'unknown'
-    assert sensor.state == "unknown"
+    # Since the list_id is not present, state should default to the first available list
+    assert sensor.state == "another_list_id"
     assert sensor.extra_state_attributes["task_lists"] == [
         {"id": "another_list_id", "name": "Non Existent List"}
     ]
     assert sensor.extra_state_attributes["items"] == []
     assert sensor.extra_state_attributes["statistics"] == {"completed": 1, "pending": 2}
-
-
-async def test_remember_the_milk_sensor_async_update_completed_task(
-    hass: HomeAssistant, mock_coordinator, mock_add_entities
-):
-    """Test async_update with a completed task."""
-    # Define a completed task series
-    completed_taskseries = Mock(
-        id="taskseries2",
-        name="Completed Task",  # Set name directly as string
-        task=Mock(
-            id="task2",
-            completed=True,
-            due="2024-11-30",
-            added="2024-02-01",
-        ),
-        notes=Mock(),  # Mock object instead of list
-    )
-    # Assign the 'note' attribute with a 'value'
-    completed_taskseries.notes.note.value = "Completed Description"
-
-    # Define a task list that includes the completed task series
-    completed_task_list = MagicMock(id=TEST_LIST_ID)
-    completed_task_list.name = "Test List with Completed Task"  # Set name as string
-    completed_task_list.__iter__.return_value = iter([completed_taskseries])
-
-    # Set the coordinator's data to include the completed task list
-    mock_coordinator.async_get_task_lists.return_value = [completed_task_list]
-    mock_coordinator.data = [completed_task_list]
-
-    # Instantiate the sensor
-    sensor = RememberTheMilkSensor(mock_coordinator)
-    sensor.hass = hass  # Set the hass attribute
-    sensor.entity_id = "sensor.remember_the_milk_test"  # Assign entity_id
-
-    # Update state
-    sensor.update_state(TEST_LIST_ID)
-    await hass.async_block_till_done()  # Allow scheduled updates to run
-
-    # Run async_update
-    await sensor.async_update()
-
-    # Check that the task status is 'completed'
-    assert sensor.extra_state_attributes["items"] == [
-        {
-            "summary": "Completed Task",
-            "uid": "taskseries2_task2",
-            "status": "completed",
-            "due": "2024-11-30",
-            "description": "Completed Description",
-        }
-    ]

@@ -3,13 +3,13 @@
 """Tests for the Remember The Milk Entity."""
 
 import logging
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
-
-from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.components.remember_the_milk.entity import RememberTheMilkEntity
 from rtmapi import RtmRequestFailedException
+
+from homeassistant.components.remember_the_milk.entity import RememberTheMilkEntity
+from homeassistant.core import HomeAssistant, ServiceCall
 
 # Constants (assuming TEST_LIST_ID is defined elsewhere)
 TEST_LIST_ID = "test_list_id"
