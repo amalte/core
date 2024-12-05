@@ -124,7 +124,8 @@ class RememberTheMilkEntity(Entity):
             )
         except RtmRequestFailedException as rtm_exception:
             _LOGGER.error(
-                "Error creating new Remember The Milk task for account %s: %s",
+                "Error completing task with ID %s for account %s: %s",
+                hass_id,
                 self._name,
                 rtm_exception,
             )

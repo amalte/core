@@ -2,17 +2,17 @@
 
 """Tests for the Remember The Milk Notifications."""
 
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from zoneinfo import ZoneInfo
 
 import pytest
+from rtmapi import RtmIterableObject
 
-from homeassistant.core import HomeAssistant
 from homeassistant.components.remember_the_milk.notifications import (
     RememberTheMilkNotifications,
 )
-from rtmapi import RtmIterableObject
+from homeassistant.core import HomeAssistant
 
 
 @pytest.fixture
