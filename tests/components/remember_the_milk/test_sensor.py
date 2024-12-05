@@ -6,10 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import pytest
 
 from homeassistant.components.remember_the_milk.sensor import (
-    RememberTheMilkSensor,
-    async_setup_platform,
     SERVICE_RTM_METHOD,
     SERVICE_UPDATE_TASK_LIST,
+    RememberTheMilkSensor,
+    async_setup_platform,
 )
 from homeassistant.core import HomeAssistant
 
