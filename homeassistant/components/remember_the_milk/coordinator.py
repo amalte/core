@@ -120,6 +120,7 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
 
         Raises:
             UpdateFailed: If there is an error communicating with the API.
+
         """
         try:
             # Fetch the list of tasks for the specified list_id asynchronously with rate limiting
