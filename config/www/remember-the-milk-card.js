@@ -77,95 +77,98 @@ class RememberTheMilkCard extends HTMLElement {
 
     const totalPages = Math.ceil(taskItems.length / tasksPerPage);
 
-    const displayTasks = (page) => {
+      const displayTasks = (page) => {
       const startIdx = (page - 1) * tasksPerPage;
       const endIdx = page * tasksPerPage;
       const tasksToDisplay = taskItems.slice(startIdx, endIdx);
 
       const uncompletedTasks = tasksToDisplay.filter(
-        (task) => task.status !== "completed",
+        (task) => task.status !== "completed"
       );
       const completedTasks = tasksToDisplay.filter(
-        (task) => task.status === "completed",
+        (task) => task.status === "completed"
       );
 
-      this.taskItemsContainer.innerHTML = `
-        <strong>Tasks:</strong>
-        <div>
-          ${uncompletedTasks
-            .map(
-              (task) => `
-              <div style="display: flex; align-items: center; margin-bottom: 10px; padding: 10px; background: #f9f9f9; border: 1px solid #ccc; border-radius: 5px; max-width: 90%;">
-                <input type="checkbox" data-task-id="${
-                  task.uid
-                }" class="status-toggle" />
-                <div style="display: flex; flex: 1; justify-content: space-between; align-items: center;">
-                  <span style="font-weight: bold; margin-right: 8px; font-size: 10px;">${
-                    task.summary
-                  }</span>
-                  ${
-                    task.due
-                      ? `<span style="background: #ffdddd; color: #d32f2f; font-size: 10px; padding: 1px 3px; border-radius: 3px; white-space: nowrap;">
-                          ${new Date(task.due).toLocaleString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>`
-                      : ""
-                  }
-                  <button data-task-id="${task.uid}" class="delete-task-btn"
-                    style="margin-left: 10px; background: none; border: none; color: red; font-size: 18px; cursor: pointer;">
-                    ×
-                  </button>
-                </div>
-              </div>
-            `,
-            )
-            .join("")}
+      // Load saved order or use default
+      const savedOrder = JSON.parse(localStorage.getItem("taskOrder")) || [];
+      uncompletedTasks.sort((a, b) => {
+        return savedOrder.indexOf(a.uid) - savedOrder.indexOf(b.uid);
+      });
+
+      const createUncompletedTaskHTML = (task) => `
+        <div class="task-item" draggable="true" data-task-id="${task.uid}"
+          style="display: flex; align-items: center; margin-bottom: 10px; padding: 10px; background: #f9f9f9; border: 1px solid #ccc; border-radius: 5px; max-width: 90%;">
+          <input type="checkbox" data-task-id="${task.uid}" class="status-toggle" />
+          <div style="display: flex; flex: 1; justify-content: space-between; align-items: center;">
+            <span style="font-weight: bold; margin-right: 8px; font-size: 10px;">${task.summary}</span>
+            ${task.due ? `<span style="background: #ffdddd; color: #d32f2f; font-size: 10px; padding: 1px 3px; border-radius: 3px; white-space: nowrap;">
+              ${new Date(task.due).toLocaleString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>` : ""}
+            <button data-task-id="${task.uid}" class="delete-task-btn" style="margin-left: 10px; background: none; border: none; color: red; font-size: 18px; cursor: pointer;">×</button>
+          </div>
         </div>
       `;
 
-      this.completedTasksContainer.innerHTML = `
-        <strong>Completed:</strong>
-        <div>
-          ${completedTasks
-            .map(
-              (task) => `
-              <div style="display: flex; align-items: center; margin-bottom: 10px; padding: 10px; background: #f1f8e9; border: 1px solid #ccc; border-radius: 5px; max-width: 90%;">
-                <input type="checkbox" data-task-id="${
-                  task.uid
-                }" class="status-toggle" checked />
-                <div style="display: flex; flex: 1; justify-content: space-between; align-items: center;">
-                  <span style="font-weight: bold; margin-right: 8px; font-size: 10px; text-decoration: line-through;">${
-                    task.summary
-                  }</span>
-                  ${
-                    task.due
-                      ? `<span style="background: #e8f5e9; color: #4caf50; font-size: 10px; padding: 1px 3px; border-radius: 3px; white-space: nowrap;">
-                          ${new Date(task.due).toLocaleString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>`
-                      : ""
-                  }
-                  <button data-task-id="${task.uid}" class="delete-task-btn"
-                    style="margin-left: 10px; background: none; border: none; color: red; font-size: 18px; cursor: pointer;">
-                    ×
-                  </button>
-                </div>
-              </div>
-            `,
-            )
-            .join("")}
+      const createCompletedTaskHTML = (task) => `
+        <div class="completed-task-item" style="display: flex; align-items: center; margin-bottom: 10px; padding: 10px; background: #e8f5e9; border: 1px solid #ccc; border-radius: 5px; max-width: 90%;">
+          <input type="checkbox" data-task-id="${task.uid}" class="status-toggle" checked />
+          <div style="display: flex; flex: 1; justify-content: space-between; align-items: center;">
+            <span style="font-weight: bold; margin-right: 8px; font-size: 10px; text-decoration: line-through;">${task.summary}</span>
+            ${task.due ? `<span style="background: #e8f5e9; color: #4caf50; font-size: 10px; padding: 1px 3px; border-radius: 3px; white-space: nowrap;">
+              ${new Date(task.due).toLocaleString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>` : ""}
+            <button data-task-id="${task.uid}" class="delete-task-btn" style="margin-left: 10px; background: none; border: none; color: red; font-size: 18px; cursor: pointer;">×</button>
+          </div>
         </div>
       `;
+
+      this.taskItemsContainer.innerHTML = `<strong>Tasks:</strong>
+        <div id="uncompleted-tasks">
+          ${uncompletedTasks.map(createUncompletedTaskHTML).join("")}
+        </div>`;
+
+      this.completedTasksContainer.innerHTML = `<strong>Completed:</strong>
+        <div id="completed-tasks">
+          ${completedTasks.map(createCompletedTaskHTML).join("")}
+        </div>`;
+
+      // Drag and Drop Functionality for Uncompleted Tasks
+      const taskContainer = this.querySelector("#uncompleted-tasks");
+      let draggedItem = null;
+
+      taskContainer.addEventListener("dragstart", (e) => {
+        if (e.target.classList.contains("task-item")) {
+          draggedItem = e.target;
+          e.dataTransfer.effectAllowed = "move";
+        }
+      });
+
+      taskContainer.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (e.target.classList.contains("task-item")) {
+          taskContainer.insertBefore(draggedItem, e.target.nextSibling);
+        }
+      });
+
+      taskContainer.addEventListener("drop", () => updateTaskOrder());
+
+      const updateTaskOrder = () => {
+        const taskItems = Array.from(taskContainer.querySelectorAll(".task-item"));
+        const newOrder = taskItems.map((item) => item.dataset.taskId);
+        localStorage.setItem("taskOrder", JSON.stringify(newOrder));
+      };
 
       this.pageNumberElement.textContent = `Page ${page}`;
       this.prevButton.disabled = page === 1;
