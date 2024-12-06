@@ -87,6 +87,29 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
             # Return the fetched task data
             return data
 
+    async def _check_duplicate_task(self, list_id: str, task_name: str) -> str:
+        """Check if a task name would be a duplicate in a task list.
+
+        Args:
+            list_id: ID of the target list
+            task_name: Name of the new task to check
+
+        Returns:
+            str: Task name if it is a duplicate in the list, otherwise an empty string if no duplicate
+
+        """
+        # Get the target task list
+        task_list = await self.async_get_tasks(list_id)
+        if task_list is None:
+            return ""
+
+        # Check if provided task name exists in the task list
+        for taskseries in task_list:
+            if taskseries.name == task_name:
+                return task_name
+
+        return ""
+
     async def _check_duplicate_lists(
         self, list_id: str, taskseries_id: str, task_name: str, operation: str
     ) -> list[str]:
@@ -218,6 +241,11 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
 
         """
         try:
+            # Check for duplicate task in this list
+            duplicate_task = await self._check_duplicate_task(list_id, task_name)
+            if duplicate_task:
+                self.raise_duplicate_task_error(duplicate_task)
+
             # Check for duplicate tasks in the target list
             duplicate_lists = await self._check_duplicate_lists(
                 list_id, "", task_name, "add"
@@ -473,8 +501,6 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
             )
             if len(duplicate_lists) > 0:
                 self.raise_duplicate_list_error(duplicate_lists)
-            # Create a new timeline entry asynchronously with rate limiting
-            result = await run_async(self.rate_limiter, self.api.rtm.timelines.create)
             # Find the existing task in the current data
             old_task = next(
                 (
@@ -489,6 +515,13 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
             if not old_task:
                 # Raise an error if the old task is not found
                 raise ValueError(f"Old task with ID {taskseries_id} not found")
+            # If name is updated, check if it will be a duplicate
+            if old_task.name != name:
+                duplicate_task = await self._check_duplicate_task(list_id, name)
+                if duplicate_task:
+                    self.raise_duplicate_task_error(duplicate_task)
+            # Create a new timeline entry asynchronously with rate limiting
+            result = await run_async(self.rate_limiter, self.api.rtm.timelines.create)
 
             # Determine what changes need to be made
             change_name = old_task.name != name
@@ -557,4 +590,13 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
         """
         raise ValueError(
             f"Tasks will be same in the following lists: {', '.join(duplicate_lists)}. Please check the duplicate lists before proceeding."
+        )
+
+    def raise_duplicate_task_error(self, duplicate_task: str) -> None:
+        """Raise ValueError if a duplicate task in a list is about to be added.
+
+        duplicate_task (str): Name of the task that would be duplicated
+        """
+        raise ValueError(
+            f"Task with the name: '{duplicate_task}' already exists in this list. Please check the duplicate name before proceeding."
         )
