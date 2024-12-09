@@ -1,12 +1,9 @@
 """Tests for the Remember The Milk component."""
 
-from unittest.mock import Mock, mock_open, patch, call, ANY
+from unittest.mock import Mock, call, mock_open, patch
 
 import homeassistant.components.remember_the_milk as rtm
-from homeassistant.components.remember_the_milk import setup
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_component import EntityComponent
-
 
 from .const import JSON_STRING, PROFILE, TOKEN
 

@@ -1,15 +1,13 @@
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch, ANY
+from datetime import datetime, timedelta  # noqa: D100
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from homeassistant.components.todo import TodoItem, TodoItemStatus
 from homeassistant.components.remember_the_milk.todo import (
     RememberTheMilkTodoListEntity,
     async_setup_platform,
 )
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import Entity
+from homeassistant.components.todo import TodoItem, TodoItemStatus
 
 
 def test_initialization(todo_entity):

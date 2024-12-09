@@ -1,6 +1,7 @@
 """Tests for the Remember The Milk sensor platform."""
 
 import json
+import logging
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -344,3 +345,109 @@ async def test_remember_the_milk_sensor_async_update_missing_task_list(
     ]
     assert sensor.extra_state_attributes["items"] == []
     assert sensor.extra_state_attributes["statistics"] == {"completed": 1, "pending": 2}
+
+
+@pytest.mark.asyncio
+async def test_no_account_name_in_discovery_info(
+    hass: HomeAssistant, mock_add_entities
+):
+    """Test that async_setup_platform logs an error and returns if no account name is provided."""
+    with patch(
+        "homeassistant.components.remember_the_milk.sensor._LOGGER"
+    ) as mock_logger:
+        # No 'account_name' in discovery_info
+        discovery_info = {}
+        await async_setup_platform(hass, {}, mock_add_entities, discovery_info)
+
+        # Verify that the error message was logged
+        mock_logger.error.assert_any_call("No account name found in discovery_info")
+        # No entities should be added
+        mock_add_entities.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_no_coordinator_found_for_account(hass: HomeAssistant, mock_add_entities):
+    """Test that async_setup_platform logs an error and returns if no coordinator is found."""
+    # Set up hass.data[DOMAIN] but no coordinator for the given account_name
+    hass.data.setdefault(DOMAIN, {})
+    # Provide a discovery_info with an account_name that doesn't exist
+    discovery_info = {"account_name": "NonExistentAccount"}
+
+    with patch(
+        "homeassistant.components.remember_the_milk.sensor._LOGGER"
+    ) as mock_logger:
+        await async_setup_platform(hass, {}, mock_add_entities, discovery_info)
+
+        # Verify that the error message was logged
+        mock_logger.error.assert_any_call(
+            "No coordinator found for account %s", "NonExistentAccount"
+        )
+        # No entities should be added
+        mock_add_entities.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_service_update_task_list_missing_list_id(
+    hass: HomeAssistant, mock_coordinator, mock_add_entities
+):
+    """Test calling the update_task_list service with empty list_id to trigger the error log."""
+    hass.data.setdefault(DOMAIN, {TEST_ACCOUNT_NAME: mock_coordinator})
+    discovery_info = {"account_name": TEST_ACCOUNT_NAME}
+    await async_setup_platform(hass, {}, mock_add_entities, discovery_info)
+
+    with patch(
+        "homeassistant.components.remember_the_milk.sensor._LOGGER"
+    ) as mock_logger:
+        # Call the SERVICE_UPDATE_TASK_LIST with an empty string for list_id
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_UPDATE_TASK_LIST,
+            {"list_id": ""},  # empty string passes schema but triggers if not list_id:
+            blocking=True,
+        )
+
+        mock_logger.error.assert_any_call("Service call missing 'list_id' parameter")
+
+
+@pytest.mark.asyncio
+async def test_service_rtm_method_missing_parameters(
+    hass: HomeAssistant, mock_coordinator, mock_add_entities
+):
+    """Test calling the rtm_method service with empty method or payload to trigger the error log."""
+    hass.data.setdefault(DOMAIN, {TEST_ACCOUNT_NAME: mock_coordinator})
+    discovery_info = {"account_name": TEST_ACCOUNT_NAME}
+    await async_setup_platform(hass, {}, mock_add_entities, discovery_info)
+
+    with patch(
+        "homeassistant.components.remember_the_milk.sensor._LOGGER"
+    ) as mock_logger:
+        # Call the SERVICE_RTM_METHOD with a method but empty payload
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_RTM_METHOD,
+            {
+                "method": "some_method",
+                "payload": "",  # empty string passes schema but fails if not payload:
+            },
+            blocking=True,
+        )
+        mock_logger.error.assert_any_call(
+            "Service call missing 'method' or 'payload' parameter"
+        )
+
+    with patch(
+        "homeassistant.components.remember_the_milk.sensor._LOGGER"
+    ) as mock_logger:
+        # Call the SERVICE_RTM_METHOD with a payload but empty method
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_RTM_METHOD,
+            {
+                "method": "",  # empty string
+                "payload": JSON_PAYLOAD,
+            },
+            blocking=True,
+        )
+        mock_logger.error.assert_any_call(
+            "Service call missing 'method' or 'payload' parameter"
+        )
