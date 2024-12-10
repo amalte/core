@@ -293,6 +293,13 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
                 list_id = payload.get("list_id")
                 taskseries_id = payload.get("taskseries_id")
                 task_name = payload.get("name")
+                # Check for duplicate task in this list
+                if method == "add":
+                    duplicate_task = await self._check_duplicate_task(
+                        list_id, task_name
+                    )
+                    if duplicate_task:
+                        self.raise_duplicate_task_error(duplicate_task)
                 operation = method if method != "setName" else "update"
                 duplicate_lists = await self._check_duplicate_lists(
                     list_id, taskseries_id, task_name, operation
