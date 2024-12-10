@@ -5,6 +5,10 @@ branches:
     - dev
     - feature
 
+cache:
+  directories:
+    - $HOME/.cache/pip
+
 jobs:
   include:
     - stage: test
@@ -21,7 +25,7 @@ jobs:
         - pip install -r requirements_test_all.txt
       script:
         - ./script/setup
-        - pytest ./tests/components/remember_the_milk/ --cov=homeassistant.components.remember_the_milk --cov-report term-missing --cov-fail-under=50 -rw -vv
+        - pytest ./tests/components/remember_the_milk/ --cov=homeassistant.components.remember_the_milk --cov-report xml:coverage.xml --cov-fail-under=50 -rw -vv
 
     - stage: sonar
       name: SonarCloud Analysis
@@ -32,7 +36,8 @@ jobs:
         sonarcloud:
           organization: "amalte"
       before_install:
-        - java -version  # Verify Java version
+        - java -version # Verify Java version
       install: skip
+      needs: test
       script:
         - sonar-scanner
