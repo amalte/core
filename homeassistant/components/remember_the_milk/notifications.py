@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from rtmapi import RtmIterableObject
 
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import async_call_later, async_track_point_in_time
 
 
@@ -104,4 +105,6 @@ class RememberTheMilkNotifications:
             )
         except Exception as e:  # noqa: BLE001
             # Raise an exception if notification fails.
-            raise Exception(f"Failed to send notification for task '{task_name}': {e}")  # noqa: TRY002
+            raise HomeAssistantError(
+                f"Failed to send notification for task '{task_name}': {e}"
+            ) from e  # noqa: TRY002

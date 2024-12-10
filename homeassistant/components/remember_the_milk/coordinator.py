@@ -320,6 +320,103 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
             # Raise an UpdateFailed exception if an error occurs
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
+    def _get_statistics_time_ranges(
+        self, today: datetime, details_range: str, trend_range: str
+    ) -> tuple[datetime, datetime, datetime, datetime, int]:
+        """Determine the time ranges for statistics based on the specified ranges.
+
+        Args:
+            today (datetime): The current date and time in the user's timezone.
+            details_range (str): The range for detailed statistics ("day" or "week").
+            trend_range (str): The range for trend statistics ("week" or "month").
+
+        Returns:
+            tuple[datetime, datetime, datetime, datetime, int]: The start and end times for the details and trend ranges,
+            and the index range for the trend statistics.
+
+        """
+        # Determine the start and end times for the details range
+        if details_range == "day":
+            details_start, details_end = get_time_range(today, "day")
+        elif details_range == "week":
+            details_start, details_end = get_time_range(today, "week")
+        else:
+            details_start, details_end = None, None
+
+        # Determine the start and end times for the trend range and set the index range
+        if trend_range == "week":
+            trend_start, trend_end = get_time_range(today, "week")
+            trend_index_range = 7
+        elif trend_range == "month":
+            trend_start, trend_end = get_time_range(today, "month")
+            trend_index_range = trend_end.day
+        else:
+            trend_start, trend_end = None, None
+            trend_index_range = 0
+
+        return details_start, details_end, trend_start, trend_end, trend_index_range
+
+    def _get_statistics_due_time(self, taskseries) -> datetime:
+        """Determine the due time of a task based on the due date.
+
+        Args:
+            taskseries: The task series object containing the task.
+
+        Returns:
+            datetime: The due time of the task in the user's timezone.
+
+        """
+        # Determine the due time of the task, converting to the user's timezone
+        if taskseries.task.due:
+            due_time = datetime.fromisoformat(taskseries.task.due).astimezone(
+                self.timezone
+            )
+        else:
+            due_time = datetime.fromisoformat(taskseries.task.added).astimezone(
+                self.timezone
+            )
+
+        return due_time
+
+    def _collect_details_and_trend_statistics(
+        self,
+        due_time: datetime,
+        is_completed: bool,
+        details_start: datetime,
+        details_end: datetime,
+        trend_start: datetime,
+        trend_end: datetime,
+        trend: dict,
+        details: dict,
+    ) -> None:
+        """Collect statistics for the details and trend ranges.
+
+        Args:
+            due_time (datetime): The due time of the task.
+            is_completed (bool): Indicates if the task is completed.
+            details_start (datetime): The start time for the details range.
+            details_end (datetime): The end time for the details range.
+            trend_start (datetime): The start time for the trend range.
+            trend_end (datetime): The end time for the trend range.
+            trend (dict): The dictionary containing trend statistics.
+            details (dict): The dictionary containing details statistics.
+
+        """
+        # Update details statistics if the task falls within the details range
+        if details_start and details_end and details_start <= due_time <= details_end:
+            details["total"] = details.get("total", 0) + 1
+            if is_completed:
+                details["completed"] = details.get("completed", 0) + 1
+
+        # Update trend statistics if the task falls within the trend range
+        if trend_start and trend_end and trend_start <= due_time <= trend_end:
+            date = due_time.date()
+            if date not in trend:
+                trend[date] = {"total": 0, "completed": 0}
+            trend[date]["total"] += 1
+            if is_completed:
+                trend[date]["completed"] += 1
+
     def get_statistics(
         self, details_range: str = "day", trend_range: str = "week"
     ) -> dict[str, int]:
@@ -350,24 +447,10 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
         # Get the current date and time in the user's timezone
         today = datetime.now(self.timezone)
 
-        # Determine the start and end times for the details range
-        if details_range == "day":
-            details_start, details_end = get_time_range(today, "day")
-        elif details_range == "week":
-            details_start, details_end = get_time_range(today, "week")
-        else:
-            details_start, details_end = None, None
-
-        # Determine the start and end times for the trend range and set the index range
-        if trend_range == "week":
-            trend_start, trend_end = get_time_range(today, "week")
-            trend_index_range = 7
-        elif trend_range == "month":
-            trend_start, trend_end = get_time_range(today, "month")
-            trend_index_range = trend_end.day
-        else:
-            trend_start, trend_end = None, None
-            trend_index_range = 0
+        # Determine the time ranges for statistics based on the specified ranges
+        details_start, details_end, trend_start, trend_end, trend_index_range = (
+            self._get_statistics_time_ranges(today, details_range, trend_range)
+        )
 
         # Iterate through each task list in the data
         for task_list in self.data:
@@ -382,37 +465,23 @@ class RememberTheMilkCoordinator(DataUpdateCoordinator[list[Any]]):
                     completed_tasks += 1
 
                 # Determine the due time of the task, converting to the user's timezone
-                if taskseries.task.due:
-                    due_time = datetime.fromisoformat(taskseries.task.due).astimezone(
-                        self.timezone
-                    )
-                else:
-                    due_time = datetime.fromisoformat(taskseries.task.added).astimezone(
-                        self.timezone
-                    )
+                due_time = self._get_statistics_due_time(taskseries)
 
                 # Increment today's task counter if the task is due today
                 if due_time.date() == today.date():
                     today_tasks += 1
 
-                # Update details statistics if the task falls within the details range
-                if (
-                    details_start
-                    and details_end
-                    and details_start <= due_time <= details_end
-                ):
-                    details["total"] = details.get("total", 0) + 1
-                    if is_completed:
-                        details["completed"] = details.get("completed", 0) + 1
-
-                # Update trend statistics if the task falls within the trend range
-                if trend_start and trend_end and trend_start <= due_time <= trend_end:
-                    date = due_time.date()
-                    if date not in trend:
-                        trend[date] = {"total": 0, "completed": 0}
-                    trend[date]["total"] += 1
-                    if is_completed:
-                        trend[date]["completed"] += 1
+                # Collect statistics for the details and trend ranges
+                self._collect_details_and_trend_statistics(
+                    due_time,
+                    is_completed,
+                    details_start,
+                    details_end,
+                    trend_start,
+                    trend_end,
+                    trend,
+                    details,
+                )
 
         # Normalize the trend dictionary to have a continuous index range
         for i in range(trend_index_range):

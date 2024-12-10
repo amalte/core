@@ -41,7 +41,7 @@ class TodoItemStatus:
 
 async def async_setup_platform(
     hass: HomeAssistant,
-    config: ConfigType,
+    _: ConfigType,
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
@@ -49,7 +49,6 @@ async def async_setup_platform(
 
     Args:
         hass (HomeAssistant): The Home Assistant instance.
-        config (ConfigType): Configuration data.
         async_add_entities (AddEntitiesCallback): Function to add sensor entities.
         discovery_info (DiscoveryInfoType | None): Discovery information.
 
@@ -192,31 +191,7 @@ class RememberTheMilkSensor(SensorEntity):
 
         # Gather todo items for the active task list
         if task_list_id:
-            for task_list in self._coordinator.data:
-                if task_list.id != task_list_id:
-                    continue
-                todo_items = [
-                    [
-                        taskseries.task.added,
-                        {
-                            "summary": taskseries.name,
-                            "uid": taskseries.id + "_" + taskseries.task.id,
-                            "status": TodoItemStatus.COMPLETED
-                            if taskseries.task.completed
-                            else TodoItemStatus.NEEDS_ACTION,
-                            "due": taskseries.task.due,
-                            "description": (
-                                taskseries.notes.note.value
-                                if len(list(taskseries.notes)) > 0
-                                else ""
-                            ),
-                        },
-                    ]
-                    for taskseries in task_list
-                ]
-                # Sort tasks by added time
-                todo_items.sort(key=lambda x: x[0])
-                task_list_items = [item[1] for item in todo_items]
+            task_list_items = self._get_task_items_in_list(task_list_id)
 
         # Update attributes and state
         self._attributes = {"task_lists": all_task_lists, "items": task_list_items}
@@ -225,3 +200,40 @@ class RememberTheMilkSensor(SensorEntity):
         # Update statistics from coordinator
         statistics = self._coordinator.get_statistics()
         self._attributes.update({"statistics": statistics})
+
+    def _get_task_items_in_list(self, task_list_id: str) -> list[dict[str, Any]]:
+        """Retrieve the task items for a specified task list.
+
+        Args:
+            task_list_id (str): The ID of the task list.
+
+        Returns:
+            list[dict[str, Any]]: The list of task items.
+
+        """
+        for task_list in self._coordinator.data:
+            if task_list.id != task_list_id:
+                continue
+            todo_items = [
+                [
+                    taskseries.task.added,
+                    {
+                        "summary": taskseries.name,
+                        "uid": taskseries.id + "_" + taskseries.task.id,
+                        "status": TodoItemStatus.COMPLETED
+                        if taskseries.task.completed
+                        else TodoItemStatus.NEEDS_ACTION,
+                        "due": taskseries.task.due,
+                        "description": (
+                            taskseries.notes.note.value
+                            if len(list(taskseries.notes)) > 0
+                            else ""
+                        ),
+                    },
+                ]
+                for taskseries in task_list
+            ]
+            # Sort tasks by added time
+            todo_items.sort(key=lambda x: x[0])
+            return [item[1] for item in todo_items]
+        return []
